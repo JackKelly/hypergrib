@@ -21,7 +21,7 @@ Reading directly from GRIBs will probably be sufficient for a bunch of use-cases
 
 On the other hand, there will definitely be read-patterns which will never be well-served by reading from GRIBs (because of the way the data is structured on disk). For example, reading a long timeseries for a single geographical point will involve reading about one million times more data off disk than you need (assuming each 2D GRIB message is 1,000 x 1,000 pixels). So, even if you sustain 20 gigabytes per second from GRIBs in object storage, you'll only get 20 _kilobytes_ per second of useful data! For these use-cases, the data will almost certainly have to be converted to something like Zarr. (And, hopefully, `hypergrib` will help make the conversion from GRIB to Zarr as efficient as possible).
 
-(That said, I'm keen to explore ways to slice _into_ each GRIB message... e.g. some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could save the state of the decompressor every, say, 4 kB, so - if we want a single pixel - we'd have to stream at most 4 kB of data from disk).
+(That said, I'm keen to explore ways to slice _into_ each GRIB message... e.g. some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk).
 
 For more info, please see [this draft blog post](https://docs.google.com/document/d/1IHoAY3hnAu4aCJ1Vb62lQHI_GmIcMYMTkdM-nUbjmQ0).
 
