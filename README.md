@@ -26,3 +26,7 @@ Why does `hypergrib` exist? At least to start with, `hypergrib` is very much an 
 - [ ] Integrate with xarray
 - [ ] Efficiently update the manifest when new GRIBs arrive
 - [ ] Convert the `hypergrib` manifest to and from kerchunk / VirtualiZarr / Zarr manifest files
+
+## Name
+
+`hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
