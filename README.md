@@ -15,9 +15,13 @@ dataset = xarray.open_dataset(URL)
 
 The ultimate dream is to be able to train large machine learning models directly from GRIBs on cloud object storage, such as the petabytes of GRIB files shared by the [NOAA Open Data Dissemination](https://www.noaa.gov/nodd) (NODD) programme, [ECMWF](https://www.ecmwf.int/en/forecasts/datasets/open-data), and others.
 
-Why does `hypergrib` exist? At least to start with, `hypergrib` is very much an experiment (which stands on the shoulders of giants like gribberish, kerchunk, Zarr, xarray, etc.). The question we're asking with this experiment is: How fast can we go if we "cheat" by building a _special-purpose_ tool focused on reading multi-file GRIBs from cloud object storage. Let's throw in all the performance tricks we can think of. Perhaps, for a bunch of use-cases, reading directly from GRIBs will be sufficient.
+Why does `hypergrib` exist? At least to start with, `hypergrib` is very much an experiment (which stands on the shoulders of giants like gribberish, kerchunk, Zarr, xarray, etc.). The question we're asking with this experiment is: How fast can we go if we "cheat" by building a _special-purpose_ tool focused on reading multi-file GRIBs from cloud object storage. Let's throw in all the performance tricks we can think of. And let's also bake in a bunch of domain knowledge about GRIBs. We're explicitly _not_ trying to build a general-purpose tool like kerchunk, so we can build something that's as lean & focused as possible.
 
-There will definitely be read-patterns which will never be well-served by reading from GRIBs, and the data will have to be converted to something like Zarr. For example, reading a long timeseries for a single geographical point will involve reading about one million times more data off disk than you need (assuming each 2D GRIB message is 1,000 x 1,000 pixels).
+Reading directly from GRIBs will probably be sufficient for a bunch of use-cases.
+
+On the other hand, there will definitely be read-patterns which will never be well-served by reading from GRIBs, and the data will have to be converted to something like Zarr. For example, reading a long timeseries for a single geographical point will involve reading about one million times more data off disk than you need (assuming each 2D GRIB message is 1,000 x 1,000 pixels).
+
+For more info, please see [this draft blog post](https://docs.google.com/document/d/1IHoAY3hnAu4aCJ1Vb62lQHI_GmIcMYMTkdM-nUbjmQ0).
 
 ## Planned features
 - [ ] Create a very concise [manifest](https://github.com/JackKelly/hypergrib/issues/1) from GRIB `.idx` files (ultimately, this manifest file would be shared publicly, so most users would only have to run `xr.open_dataset(MANIFEST_URL)` to lazily open a petabyte-scale GRIB dataset).
