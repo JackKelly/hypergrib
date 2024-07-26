@@ -1,4 +1,8 @@
 # hypergrib
+
+> **Warning**
+> This code is at its very earliest stage! It won't do anything useful for a while!
+
 Lazily read petabytes of GRIBs from cloud object storage, as fast as the hardware will allow.
 
 The ultimate aim is very much inspired by [kerchunk](https://fsspec.github.io/kerchunk/), [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr), and [dynamical.org](https://dynamical.org): Opening a multi-petabyte GRIB dataset from cloud object storage should be as simple as:
@@ -10,9 +14,6 @@ dataset = xarray.open_dataset(URL)
 `hypergrib` is focused on performance, especially for random-access: If you're using a VM with a 200 Gbps NIC, in the same region as the data, then you should be able to read GRIBs at ~20 gigabytes per second. And each load should incur minimal latency.
 
 The ultimate dream is to be able to train large machine learning models directly from GRIBs on cloud object storage, such as the petabytes of GRIB files shared by the [NOAA Open Data Dissemination](https://www.noaa.gov/nodd) (NODD) programme, [ECMWF](https://www.ecmwf.int/en/forecasts/datasets/open-data), and others.
-
-> **Note**
-> This code is at its very earliest stage! It won't do anything useful for a while!
 
 Why does `hypergrib` exist? At least to start with, `hypergrib` is very much an experiment (which stands on the shoulders of giants like gribberish, kerchunk, Zarr, xarray, etc.). The question we're asking with this experiment is: How fast can we go if we "cheat" by building a _special-purpose_ tool focused on reading multi-file GRIBs from cloud object storage. Let's throw in all the performance tricks we can think of. Perhaps, for a bunch of use-cases, reading directly from GRIBs will be sufficient. Although there will definitely be read-patterns which will never be well-served by reading from GRIBs, and the data will have to be converted to something like Zarr. For example, reading a long timeseries for a single geographical point will involve reading about one million times more data off disk than you need (assuming each 2D GRIB message is 1,000 x 1,000 pixels).
 
