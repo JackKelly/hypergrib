@@ -7,7 +7,7 @@ The ultimate aim is very much inspired by [kerchunk](https://fsspec.github.io/ke
 dataset = xarray.open_dataset(URL)
 ```
 
-`hypergrib` is focused on performance, especially for random-access: If you're using a VM with a 200 Gbps NIC, in the same region as the data, then you should be able to read GRIBs at ~20 GBytes per second. And each load should incur minimal latency.
+`hypergrib` is focused on performance, especially for random-access: If you're using a VM with a 200 Gbps NIC, in the same region as the data, then you should be able to read GRIBs at ~20 gigabytes per second. And each load should incur minimal latency.
 
 The ultimate dream is to be able to train large machine learning models directly from GRIBs on cloud object storage, such as the petabytes of GRIB files shared by the [NOAA Open Data Dissemination](https://www.noaa.gov/nodd) (NODD) programme, [ECMWF](https://www.ecmwf.int/en/forecasts/datasets/open-data), and others.
 
