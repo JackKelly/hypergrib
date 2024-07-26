@@ -7,12 +7,14 @@ The ultimate aim is very much inspired by [kerchunk](https://fsspec.github.io/ke
 dataset = xarray.open_dataset(URL)
 ```
 
-`hypergrib` is focused on performance: If you're using a VM with a 200 Gbps NIC close to the cloud object storage then you should be able to read GRIBs at ~20 GBytes per second. And each load should incur minimal latency.
+`hypergrib` is focused on performance: If you're using a VM with a 200 Gbps NIC, in the same region as the data, then you should be able to read GRIBs at ~20 GBytes per second. And each load should incur minimal latency.
 
 The ultimate dream is to be able to train large machine learning models directly from GRIBs on cloud object storage.
 
 > **Note**
 > This code is at its very earliest stage! It won't do anything useful for a while!
+
+Why does `hypergrib` exist? At least to start with, `hypergrib` is very much an experiment (which stands on the shoulders of giants like gribberish, kerchunk, Zarr, xarray, etc.). The question we're asking with this experiment is: How fast can we go if we "cheat" and build a very special-purpose tool which is focused just on reading multi-file GRIBs from cloud object storage. Let's throw in all the performance tricks we can think of. Perhaps, for a bunch of use-cases, reading directly from GRIBs will be sufficient. Although there will definitely be read-patterns which will never be well-served by reading from GRIBs, and the data will have to be converted to something like Zarr.
 
 ## Planned features
 - [ ] Create a very concise [manifest](https://github.com/JackKelly/hypergrib/issues/1) from GRIB `.idx` files
