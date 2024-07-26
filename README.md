@@ -1,5 +1,5 @@
 # hypergrib
-Lazily read petabytes of GRIBs from cloud object storage.
+Lazily read petabytes of GRIBs from cloud object storage, as fast as the hardware will allow.
 
 The ultimate aim is very much inspired by [kerchunk](https://fsspec.github.io/kerchunk/), [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr), and [dynamical.org](https://dynamical.org): Opening a multi-petabyte GRIB dataset from cloud object storage should be as simple as:
 
