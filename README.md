@@ -26,7 +26,7 @@ On the other hand, there will definitely be read-patterns which will never be we
 For more info, please see [this draft blog post](https://docs.google.com/document/d/1IHoAY3hnAu4aCJ1Vb62lQHI_GmIcMYMTkdM-nUbjmQ0).
 
 ## Planned features
-- [ ] Create a very concise [manifest](https://github.com/JackKelly/hypergrib/issues/1) from GRIB `.idx` files (ultimately, this manifest file would be shared publicly, so most users would only have to run `xr.open_dataset(MANIFEST_URL)` to lazily open a petabyte-scale GRIB dataset).
+- [ ] Create a [manifest](https://github.com/JackKelly/hypergrib/issues/1) from GRIB `.idx` files (ultimately, this manifest file would be shared publicly, so most users would only have to run `xr.open_dataset(MANIFEST_URL)` to lazily open a petabyte-scale GRIB dataset).
   - [ ] We'll probably start with the GEFS NWP
 - [ ] Lazily open the multi-GRIB dataset by reading the manifest
 - [ ] Load just the GRIB data that's required. Read and process as little data as possible. Maybe even go as far as _just_ decompressing part of each GRIB message.
