@@ -1,0 +1,19 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+homepage = "https://github.com/JackKelly/hypergrib"
+repository = "https://github.com/JackKelly/hypergrib"
+readme = "README.md"
+authors=["Jack Kelly <jack@openclimatefix.org>"]
+
+[workspace.dependencies]
+object_store = "0.10.2"
+tokio = { version = "1.39.2", features = ["rt-multi-thread"]}
+anyhow = "1.0.86"
+
+[profile.bench]
+debug = true  # Enable debuginfo when profiling with cargo flamegraph.
