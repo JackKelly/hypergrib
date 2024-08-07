@@ -10,5 +10,11 @@ authors.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
+[dependencies] # In alphabetical order
 anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+futures-util.workspace = true
+indicatif.workspace = true
+object_store = { workspace = true, features = ["aws"] }
+tokio.workspace = true
+url.workspace = true

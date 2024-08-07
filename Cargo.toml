@@ -10,10 +10,14 @@ repository = "https://github.com/JackKelly/hypergrib"
 readme = "README.md"
 authors=["Jack Kelly <jack@openclimatefix.org>"]
 
-[workspace.dependencies]
+[workspace.dependencies] # In alphabetical order
+anyhow = "1.0.86"
+clap = "4.5.13"  # parse command line arguments etc.
+futures-util = "0.3.30"
+indicatif = "0.17.8"  # progress bars etc.
 object_store = "0.10.2"
 tokio = { version = "1.39.2", features = ["rt-multi-thread"]}
-anyhow = "1.0.86"
+url = "2.5.2"
 
 [profile.bench]
 debug = true  # Enable debuginfo when profiling with cargo flamegraph.
