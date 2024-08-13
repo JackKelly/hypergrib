@@ -60,7 +60,7 @@ pub async fn main() {
 /// Filter a stream of `object_store::Result<object_store::ObjectMeta>` to select only the items
 /// which have a file extension which matches `extension`.
 fn filter_by_ext<'a>(
-    stream: BoxStream<'a, object_store::Result<ObjectMeta>>,
+    stream: impl Stream<Item = object_store::Result<ObjectMeta>> + 'a,
     extension: &'static str,
 ) -> impl Stream<Item = object_store::Result<ObjectMeta>> + 'a {
     stream.filter(move |list_result| {
