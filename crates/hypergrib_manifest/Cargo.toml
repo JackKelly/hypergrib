@@ -14,6 +14,7 @@ authors.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 futures-util.workspace = true
+gribberish.workspace = true
 indicatif.workspace = true
 object_store = { workspace = true, features = ["aws"] }
 tokio.workspace = true

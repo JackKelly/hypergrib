@@ -39,16 +39,15 @@ pub async fn main() {
     while let Some(meta) = list_stream.next().await.transpose().unwrap() {
         println!("Name: {}, size: {}", meta.location, meta.size);
 
-        if i == 0 {
-            let bytes = store
-                .get(&meta.location)
-                .and_then(|get_result| get_result.bytes());
-            fs::write(
-                meta.location.filename().expect("failed to get filename"),
-                bytes.await.expect("failed to get bytes"),
-            )
-            .expect("failed to write local file");
-        }
+        // Write idx file to local filesystem
+        let bytes = store
+            .get(&meta.location)
+            .and_then(|get_result| get_result.bytes());
+        fs::write(
+            meta.location.filename().expect("failed to get filename"),
+            bytes.await.expect("failed to get bytes"),
+        )
+        .expect("failed to write local file");
 
         i += 1;
         if i > 10 {
