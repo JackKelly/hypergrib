@@ -1,6 +1,7 @@
 use clap::Parser;
 use futures_util::StreamExt;
 use object_store;
+use std::future;
 use url::Url;
 
 /// Create a manifest from GRIB `.idx` files.
@@ -29,8 +30,14 @@ pub async fn main() {
     }
     let (store, path) = object_store::parse_url_opts(&args.url, opts).unwrap();
 
-    // Get listing:
-    let mut list_stream = store.list(Some(&path));
+    // Get listing of .idx files:
+    let mut list_stream = store.list(Some(&path)).filter(|list_result| {
+        future::ready(
+            list_result
+                .as_ref()
+                .is_ok_and(|meta| meta.location.extension().is_some_and(|ext| ext == "idx")),
+        )
+    });
 
     // Print listing:
     let mut i = 0;
