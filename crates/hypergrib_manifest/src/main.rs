@@ -1,6 +1,6 @@
 use clap::Parser;
 use futures_util::{stream::BoxStream, StreamExt};
-use object_store;
+use object_store::ObjectMeta;
 use std::future;
 use url::Url;
 
@@ -47,9 +47,9 @@ pub async fn main() {
 /// Filter a stream of `object_store::Result<object_store::ObjectMeta>` to select only the items
 /// which have a file extension which matches `extension`.
 fn filter_by_ext<'a>(
-    stream: BoxStream<'a, object_store::Result<object_store::ObjectMeta>>,
+    stream: BoxStream<'a, object_store::Result<ObjectMeta>>,
     extension: &str,
-) -> BoxStream<'a, object_store::Result<object_store::ObjectMeta>> {
+) -> BoxStream<'a, object_store::Result<ObjectMeta>> {
     stream
         .filter(|list_result| {
             future::ready(list_result.as_ref().is_ok_and(|meta| {
