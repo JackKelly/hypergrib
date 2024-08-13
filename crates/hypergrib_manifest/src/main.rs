@@ -1,6 +1,7 @@
 use clap::Parser;
-use futures_util::{stream::BoxStream, StreamExt};
+use futures_util::{stream::BoxStream, Stream, StreamExt, TryFutureExt};
 use object_store::ObjectMeta;
+use std::fs;
 use std::future;
 use url::Url;
 
@@ -37,6 +38,18 @@ pub async fn main() {
     let mut i = 0;
     while let Some(meta) = list_stream.next().await.transpose().unwrap() {
         println!("Name: {}, size: {}", meta.location, meta.size);
+
+        if i == 0 {
+            let bytes = store
+                .get(&meta.location)
+                .and_then(|get_result| get_result.bytes());
+            fs::write(
+                meta.location.filename().expect("failed to get filename"),
+                bytes.await.expect("failed to get bytes"),
+            )
+            .expect("failed to write local file");
+        }
+
         i += 1;
         if i > 10 {
             break;
@@ -48,15 +61,13 @@ pub async fn main() {
 /// which have a file extension which matches `extension`.
 fn filter_by_ext<'a>(
     stream: BoxStream<'a, object_store::Result<ObjectMeta>>,
-    extension: &str,
-) -> BoxStream<'a, object_store::Result<ObjectMeta>> {
-    stream
-        .filter(|list_result| {
-            future::ready(list_result.as_ref().is_ok_and(|meta| {
-                meta.location
-                    .extension()
-                    .is_some_and(|ext| ext == extension)
-            }))
-        })
-        .into_inner()
+    extension: &'static str,
+) -> impl Stream<Item = object_store::Result<ObjectMeta>> + 'a {
+    stream.filter(move |list_result| {
+        future::ready(list_result.as_ref().is_ok_and(|meta| {
+            meta.location
+                .extension()
+                .is_some_and(|ext| ext == extension)
+        }))
+    })
 }
