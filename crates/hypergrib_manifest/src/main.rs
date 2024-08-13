@@ -1,5 +1,5 @@
 use clap::Parser;
-use futures_util::StreamExt;
+use futures_util::{stream::BoxStream, StreamExt};
 use object_store;
 use std::future;
 use url::Url;
@@ -31,13 +31,7 @@ pub async fn main() {
     let (store, path) = object_store::parse_url_opts(&args.url, opts).unwrap();
 
     // Get listing of .idx files:
-    let mut list_stream = store.list(Some(&path)).filter(|list_result| {
-        future::ready(
-            list_result
-                .as_ref()
-                .is_ok_and(|meta| meta.location.extension().is_some_and(|ext| ext == "idx")),
-        )
-    });
+    let mut list_stream = filter_by_ext(store.list(Some(&path)), "idx");
 
     // Print listing:
     let mut i = 0;
@@ -48,4 +42,21 @@ pub async fn main() {
             break;
         }
     }
+}
+
+/// Filter a stream of `object_store::Result<object_store::ObjectMeta>` to select only the items
+/// which have a file extension which matches `extension`.
+fn filter_by_ext<'a>(
+    stream: BoxStream<'a, object_store::Result<object_store::ObjectMeta>>,
+    extension: &str,
+) -> BoxStream<'a, object_store::Result<object_store::ObjectMeta>> {
+    stream
+        .filter(|list_result| {
+            future::ready(list_result.as_ref().is_ok_and(|meta| {
+                meta.location
+                    .extension()
+                    .is_some_and(|ext| ext == extension)
+            }))
+        })
+        .into_inner()
 }
