@@ -12,7 +12,7 @@ authors=["Jack Kelly <jack@openclimatefix.org>"]
 
 [workspace.dependencies] # In alphabetical order
 anyhow = "1.0.86"
-clap = "4.5.13"  # parse command line arguments etc.
+clap = "4.5.15"  # parse command line arguments etc.
 futures-util = "0.3.30"
 indicatif = "0.17.8"  # progress bars etc.
 object_store = "0.10.2"
