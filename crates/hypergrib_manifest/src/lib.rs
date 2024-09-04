@@ -57,6 +57,13 @@ fn read_idx_into_duck_db(filename: String) -> anyhow::Result<()> {
           ",
     )?; // TODO: Pass in filename!
 
+    // Print some test data:
+    let mut stmt = conn.prepare("SELECT * FROM grib_message WHERE msg_id < 5")?;
+    let mut rows = stmt.query([])?;
+    while let Some(row) = rows.next()? {
+        println!("{:?}", row.get::<_, u32>(1)?);
+    }
+
     Ok(())
 }
 
