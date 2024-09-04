@@ -4,11 +4,12 @@ use anyhow;
 struct IdxRecord {
     msg_id: u32,
     byte_offset: u32,
-    init_date: String, // TODO: Convert to datetime
+    init_time: String, // TODO: Convert to datetime
     nwp_variable: String,
     vertical_level: String,
     step: String,
     member: String,
+    // TODO: Add GRIB filename!
 }
 
 fn parse_idx(b: &[u8]) -> anyhow::Result<Vec<IdxRecord>> {
@@ -21,6 +22,42 @@ fn parse_idx(b: &[u8]) -> anyhow::Result<Vec<IdxRecord>> {
         records.push(result?);
     }
     Ok(records)
+}
+
+fn read_idx_into_duck_db(filename: String) -> anyhow::Result<()> {
+    let conn = duckdb::Connection::open_in_memory()?;
+
+    conn.execute_batch(
+        r"CREATE TABLE grib_message (
+            msg_id INTEGER,
+            byte_offset INTEGER,
+            init_time TIMESTAMP,
+            nwp_variable VARCHAR,
+            vertical_level VARCHAR,
+            step VARCHAR,
+            member VARCHAR,
+            );
+        ",
+    )?;
+    // TODO: Change to enums: nwp_variable, vertical_level, ensemble_member
+    // TODO: Change to INTERVAL: step
+    // TODO: Add filename
+    // TODO: Convert init_time to DATETIME
+
+    conn.execute_batch(
+        r"COPY grib_message FROM 
+            '/home/jack/dev/rust/hypergrib/gec00.t00z.pgrb2af000.idx'
+            (
+              DELIMITER ':',
+              FORMAT CSV,
+              HEADER false,
+              AUTO_DETECT false,
+              TIMESTAMPFORMAT 'd=%Y%m%d%H'
+            );
+          ",
+    )?; // TODO: Pass in filename!
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -42,13 +79,19 @@ mod tests {
             IdxRecord {
                 msg_id: 1,
                 byte_offset: 0,
-                init_date: String::from("d=2017010100"),
+                init_time: String::from("d=2017010100"),
                 nwp_variable: String::from("HGT"),
                 vertical_level: String::from("10 mb"),
                 step: String::from("anl"),
                 member: String::from("ENS=low-res ctl"),
             }
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_idx_into_duck_db() -> anyhow::Result<()> {
+        read_idx_into_duck_db(String::from("FILENAME NOT USED YET!"))?;
         Ok(())
     }
 }

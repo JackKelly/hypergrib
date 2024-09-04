@@ -15,6 +15,7 @@ anyhow = "1.0.86"
 bytes = "1.7.1"
 clap = "4.5.16"  # parse command line arguments etc.
 csv = "1.3.0"
+duckdb = "1.0.0"
 futures-util = "0.3.30"
 gribberish = "0.20.1"
 indicatif = "0.17.8"  # progress bars etc.
