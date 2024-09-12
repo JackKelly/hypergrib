@@ -40,24 +40,36 @@ da.isel(
 
 And `hypergrib` needs to load the appropriate data for these integer indexes.
 
+In `hypergrib` we standardise the interface to different NWPs:
+
+```rust
+trait NWP {
+  fn get_filename(&self) -> Path;
+  fn get_byte_offset_and_len(&self) -> ByteOffsetAndLen;
+}
+```
+
 We can compute the GRIB filename from the init_time, ensemble_member, and forecast step:
 
 ```
 noaa-gefs-pds/gefs.YYYYMMDD/<init hour>/pgrb2b/gep<ensemble member>.t<init hour>z.pgrb2af<step>
 ```
 
-`hypergrib` will cache the information in the `.idx` files in a two-layer `BTreeMap`:
+`hypergrib` will cache the information in the `.idx` files in a `BTreeMap`:
 
 ```rust
-struct Outer {
+struct Key {
   init_time,
   ensemble_member,
   forecast_step,
-}
-
-struct Inner {
   nwp_variable,
   vertical_level,
+}
+
+impl Key {
+  fn to_filename(&self) -> Path {
+    // implementation
+  }
 }
 
 struct ByteOffsetAndLength {
@@ -65,7 +77,14 @@ struct ByteOffsetAndLength {
   msg_length: u32,
 }
 
-BTreeMap<Outer,
-  BTreeMap<Inner, ByteOffsetAndLength>
->
+struct GEFS {
+  manifest: BTreeMap<Key, ByteOffsetAndLength>,
+}
+
+impl NWP for GEFS {
+  impl get_filename() // ...need to think more about how this'll work!
+}
+
 ```
+
+To satisfy the user's query, we'll loop round all the requested positions, and build a `BTreeMap<filename, Vec<ByteOffsetAndLen>>`. Which we then grab from storage.
