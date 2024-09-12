@@ -11,16 +11,15 @@ readme = "README.md"
 authors=["Jack Kelly <jack@openclimatefix.org>"]
 
 [workspace.dependencies] # In alphabetical order
-anyhow = "1.0.86"
+anyhow = "1.0.88"
 bytes = "1.7.1"
-clap = "4.5.16"  # parse command line arguments etc.
+clap = "4.5.17"  # parse command line arguments etc.
 csv = "1.3.0"
-duckdb = "1.0.0"
 futures-util = "0.3.30"
-gribberish = "0.20.1"
+gribberish = "0.20.2"
 indicatif = "0.17.8"  # progress bars etc.
 object_store = "0.11.0"
-serde = "1.0.209"
+serde = "1.0.210"
 tokio = { version = "1.40.0", features = ["rt-multi-thread"]}
 url = "2.5.2"
 

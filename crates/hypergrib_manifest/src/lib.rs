@@ -24,52 +24,6 @@ fn parse_idx(b: &[u8]) -> anyhow::Result<Vec<IdxRecord>> {
     Ok(records)
 }
 
-fn read_idx_into_duck_db(filename: String) -> anyhow::Result<()> {
-    let conn = duckdb::Connection::open_in_memory()?;
-
-    conn.execute_batch(
-        r"CREATE TABLE grib_message (
-            msg_id INTEGER,
-            byte_offset INTEGER,
-            init_time TIMESTAMP,
-            nwp_variable VARCHAR,
-            vertical_level VARCHAR,
-            step_raw VARCHAR,
-            step INTERVAL,
-            ens_member VARCHAR,
-            );
-        ",
-    )?;
-    // TODO: Change to enums: nwp_variable, vertical_level, ensemble_member
-    // TODO: Add filename of GRIB file (with full path)
-
-    conn.execute_batch(
-        r"COPY grib_message (msg_id, byte_offset, init_time, nwp_variable, vertical_level, step_raw, ens_member) FROM 
-            '/home/jack/dev/rust/hypergrib/gec00.t00z.pgrb2af000.idx'
-            (
-              DELIMITER ':',
-              FORMAT CSV,
-              HEADER false,
-              AUTO_DETECT false,
-              TIMESTAMPFORMAT 'd=%Y%m%d%H'
-            );
-          ",
-    )?;
-    // TODO: Pass in filename argument!
-    // TODO: Convert step_raw to step, maybe by first storing step_raw as VARCHAR, replacing 'anl'
-    // with '0', taking just the first two characters of the string, converting that to an int, and
-    // passing that to [`to_hours(integer)`](https://duckdb.org/docs/sql/functions/interval#to_hoursinteger)
-
-    // Print some test data:
-    let mut stmt = conn.prepare("SELECT * FROM grib_message WHERE msg_id < 5")?;
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
-        println!("{:?}", row.get::<_, u32>(1)?);
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,12 +50,6 @@ mod tests {
                 member: String::from("ENS=low-res ctl"),
             }
         );
-        Ok(())
-    }
-
-    #[test]
-    fn test_read_idx_into_duck_db() -> anyhow::Result<()> {
-        read_idx_into_duck_db(String::from("FILENAME NOT USED YET!"))?;
         Ok(())
     }
 }
