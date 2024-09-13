@@ -39,6 +39,7 @@ For more info, please see [this draft blog post](https://docs.google.com/documen
 - [ ] Simple Python API (probably using asyncio)
 - [ ] Integrate with xarray
 - [ ] Run a service to efficiently update the manifests when new GRIBs arrive
+- [ ] Integrate with virtualizarr. See [VirtualiZarr/Add hypergrib as as a grib reader #238](https://github.com/zarr-developers/VirtualiZarr/issues/238)
 - [ ] Convert the `hypergrib` manifest to and from kerchunk / VirtualiZarr / Zarr manifest files
 
 ## Name
