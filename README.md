@@ -41,6 +41,7 @@ For more info, please see [this draft blog post](https://docs.google.com/documen
 - [ ] Run a service to efficiently update the manifests when new GRIBs arrive
 - [ ] Integrate with virtualizarr. See [VirtualiZarr/Add hypergrib as as a grib reader #238](https://github.com/zarr-developers/VirtualiZarr/issues/238)
 - [ ] Convert the `hypergrib` manifest to and from kerchunk / VirtualiZarr / Zarr manifest files
+- [ ] Benchmark! See recent discussion on "[Large Scale Geospatial Benchmarks](https://discourse.pangeo.io/t/large-scale-geospatial-benchmarks/4498/2)" on the Pangeo forum.
 
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
