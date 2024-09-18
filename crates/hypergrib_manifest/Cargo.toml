@@ -13,6 +13,7 @@ authors.workspace = true
 [dependencies] # In alphabetical order
 anyhow.workspace = true
 bytes.workspace = true
+chrono.workspace = true
 clap = { workspace = true, features = ["derive"] }
 csv.workspace = true
 futures-util.workspace = true

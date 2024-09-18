@@ -1,5 +1,5 @@
 use clap::Parser;
-use futures_util::{stream::BoxStream, Stream, StreamExt, TryFutureExt};
+use futures_util::{Stream, StreamExt, TryFutureExt};
 use object_store::ObjectMeta;
 use std::fs;
 use std::future;
