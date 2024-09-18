@@ -56,7 +56,7 @@ To create a dataset or to add new information to a dataset:
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Key {
   init_time: Datetime,
-  ensemble_member: u16,
+  ensemble_member: u16,  // Or an `enum EnsembleMember {Control, Perturbed(u16)}`
   forecast_step: Timedelta,
   nwp_variable: Varable,
   vertical_level: VerticalLevel,
@@ -85,9 +85,9 @@ struct OffsetAndLen {
 }
 
 struct CoordLabels {
-  // We're using vectors (not BTreeSet) because the most performance-sensitive
-  // part of the process is looking up a coord label given an interger index.
-  // And the only way to do that with a BTreeSet is to first iterate over the elements.
+  // We're using `Vector` (not `BTreeSet`) because the most performance-sensitive
+  // part of the process is looking up a coord label given an integer index.
+  // And the only way to do that with a `BTreeSet` is to first iterate over the elements.
   init_time: Vec<Datetime>,
   ensemble_member: Vec<u16>,
   forecast_step: Vec<Timedelta>,
@@ -98,7 +98,8 @@ struct CoordLabels {
 struct Dataset {
   coord_labels: CoordLabels,
   manifest: BTreeMap<Key, OffsetAndLen>,
-
+  // Maybe we also want a `manifest_index` which maps integer indexes to `OffsetAndLen`
+  // but let's make a start with the design below and benchmark it.
 }
 
 impl Dataset {
@@ -111,7 +112,10 @@ impl Dataset {
   }
 
   fn index_locs_to_key(&self, index: &[u64]) -> Option<Key> {
-    // get key by looking up the appropriate coord labels in self.coord_labels
+    // get key by looking up the appropriate coord labels in self.coord_labels.
+    // Returns `None` if any index is out of bounds (which is the same semantics as `Vec::get`).
+    // Although maybe it'd be better to return a custom `Error` so we can say which dim
+    // is out of bounds?
     Some(key)
   }
 }
