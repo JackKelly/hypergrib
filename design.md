@@ -115,7 +115,7 @@ impl Dataset {
     // get key by looking up the appropriate coord labels in self.coord_labels.
     // Returns `None` if any index is out of bounds (which is the same semantics as `Vec::get`).
     // Although maybe it'd be better to return a custom `Error` so we can say which dim
-    // is out of bounds?
+    // is out of bounds? Or if there are the wrong number of dims in the `index`?
     Some(key)
   }
 }
@@ -130,6 +130,36 @@ fn gefs_filename_to_key(path: &Path) -> Key {
 }
 
 ```
+
+Alternative design using generics (which might be better):
+```rust
+trait Key {
+  fn to_filename(&self) -> Path;
+  fn from_filename(path: Path) -> Self;
+}
+
+
+struct GEFSKey {
+  //...
+}
+
+impl Key for GEFSKey {
+  fn to_filename(&self) -> Path {
+    //...
+  }
+
+  fn from_filename(path: Path) -> Self {
+    //...
+  }
+}
+
+struct Dataset<K: Key, C> {
+  coord_labels: C,
+  manifest: BTreeMap<K, OffsetAndLen>,
+}
+
+```
+
 
 To query a dataset:
 
