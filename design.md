@@ -42,76 +42,72 @@ And `hypergrib` needs to load the appropriate data for these integer indexes.
 
 In `hypergrib` we standardise the interface to different datasets:
 
-We can compute the GRIB filename from the init_time, ensemble_member, and forecast step:
-
 ```
 noaa-gefs-pds/gefs.YYYYMMDD/<init hour>/pgrb2b/gep<ensemble member>.t<init hour>z.pgrb2af<step>
 ```
 
-`hypergrib` caches the information in the `.idx` files in a `BTreeMap`.
+`hypergrib` caches the information in the `.idx` files in a `HashMap`.
 
 To create a dataset or to add new information to a dataset:
 
 ```rust
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct Key {
+#[derive(PartialEq, Eq, Hash)] // PartialEq, Eq, and Hash are required for HashMap keys.
+struct NwpKey {
   init_time: Datetime,
   ensemble_member: u16,  // Or an `enum EnsembleMember {Control, Perturbed(u16)}`
   forecast_step: Timedelta,
-  nwp_variable: Varable,
-  vertical_level: VerticalLevel,
+  nwp_variable: Variable,  // `Variable` is an enum
+  vertical_level: VerticalLevel, // `VerticalLevel` is an enum?
 }
 
-// If the `derive` doesn't work then we can manually implement Ord, something like this:
-impl Ord for Key {
-  fn cmp(&self, other: &Self) -> Ordering {
-    match self.init_time.cmp(&other.init_time) {
-      Equal => {
-        match self.ensemble_member.cmp(&other.ensemble_member) {
-          Equal => {
-            ...
-          },
-          m => m,
-        }
-      },
-      m => m,
-    }
-  }
-}
 
-struct OffsetAndLen {
+struct Chunk<'p> {
+  path: &'p object_store::Path,
   byte_offset: u32,
   msg_length: u32,
 }
 
-struct CoordLabels {
-  // We're using `Vector` (not `BTreeSet`) because the most performance-sensitive
-  // part of the process is looking up a coord label given an integer index.
-  // And the only way to do that with a `BTreeSet` is to first iterate over the elements.
-  init_time: Vec<Datetime>,
-  ensemble_member: Vec<u16>,
-  forecast_step: Vec<Timedelta>,
-  nwp_variable: Vec<Variable>,
-  vertical_level: Vec<VerticalLevel>,
+struct SortedVecSet<T>(Vec<T>);
+
+impl<T> SortedVecSet<T> {
+  /// Insert only if a duplicate doesn't exist. Sorts after insertion.
+  fn insert(t: T) -> Result<DuplicateExists>;
 }
 
-struct Dataset {
-  coord_labels: CoordLabels,
-  manifest: BTreeMap<Key, OffsetAndLen>,
-  // Maybe we also want a `manifest_index` which maps integer indexes to `OffsetAndLen`
+struct NwpCoordLabels {
+  // We're using `SortedVecSet` (not `BTreeSet`) because the most performance-sensitive
+  // part of the process is looking up a coord label given an integer index.
+  // And the only way to do that with a `BTreeSet` is to first iterate over the elements.
+  init_time: SortedVecSet<Datetime>,
+  ensemble_member: SortedVecSet<u16>,
+  forecast_step: SortedVecSet<Timedelta>,
+  nwp_variable: SortedVecSet<Variable>,
+  vertical_level: SortedVecSet<VerticalLevel>,
+}
+
+struct Dataset<K, COORDS>
+where
+  K: PartialEq + Eq + Hash,
+  {
+  coord_labels: COORDS,
+  // Need to store the paths once, so we only store a reference to each Path
+  // in the `Chunk`. Each path in `paths` will be relative to `base_path`.
+  paths: HashSet<object_store::Path>,
+  manifest: HashMap<K, Chunk>,
+  // Maybe we also want a `manifest_index` which maps integer indexes to `Chunk`
   // but let's make a start with the design below and benchmark it.
 }
 
-impl Dataset {
-  fn insert(&mut self, key: Key, offset_and_len: OffsetAndLen) -> Result<(), AlreadyExistsError> {
+impl<K, COORDS> Dataset<K, COORDS> {
+  fn insert(&mut self, key: K, chunk: Chunk) -> Result<(), AlreadyExistsError> {
     // Insert into `manifest` and update `coord_labels` iff the new coord doesn't exist yet.
   }
 
-  fn coord_labels_to_offset_and_len(&self, key: &Key) -> Option<OffsetAndLen> {
+  fn coord_labels_to_chunk(&self, key: &K) -> Option<Chunk> {
     self.manifest[key]
   }
 
-  fn index_locs_to_key(&self, index: &[u64]) -> Option<Key> {
+  fn index_locs_to_key(&self, index: &[u64]) -> Option<K> {
     // get key by looking up the appropriate coord labels in self.coord_labels.
     // Returns `None` if any index is out of bounds (which is the same semantics as `Vec::get`).
     // Although maybe it'd be better to return a custom `Error` so we can say which dim
@@ -120,42 +116,24 @@ impl Dataset {
   }
 }
 
-// GEFS-specific code:
-fn key_to_gefs_filename(key: &Key) -> Path {
-  // TODO
+trait NwpDataset {
+  fn ingest_grib_idx(&mut self, idx_path: Path, idx_contents: &[u8]) -> Result;
 }
 
-fn gefs_filename_to_key(path: &Path) -> Key {
-  // TODO
+// GEFS-specific code
+struct GefsDataset {
+  dataset: Dataset<NwpKey, NwpCoordLabels>,
 }
 
-```
-
-Alternative design using generics (which might be better):
-```rust
-trait Key {
-  fn to_filename(&self) -> Path;
-  fn from_filename(path: Path) -> Self;
-}
-
-
-struct GEFSKey {
-  //...
-}
-
-impl Key for GEFSKey {
-  fn to_filename(&self) -> Path {
-    //...
+impl NwpDataset for GefsDataset {
+  fn ingest_grib_idx(&mut self, idx_path: Path, idx_contents: &[u8]) -> Result {
+    // insert `idx_path` into `self.dataset.paths`, and get a ref to the `path` in `paths`
+    // for use in the `Chunk`.
   }
 
-  fn from_filename(path: Path) -> Self {
-    //...
+  fn as_ref(&self) -> &Dataset<NwpKey, NwpCoordLabels> {
+    &self.dataset
   }
-}
-
-struct Dataset<K: Key, C> {
-  coord_labels: C,
-  manifest: BTreeMap<K, OffsetAndLen>,
 }
 
 ```
