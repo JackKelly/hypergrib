@@ -33,9 +33,14 @@ struct GefsDataset {
 }
 
 impl Dataset for GefsDataset {
-    fn ingest_grib_idx(&mut self, idx_path: Path, idx_contents: &[u8]) -> Result {
+    fn ingest_grib_idx(
+        &mut self,
+        idx_path: object_store::path::Path,
+        idx_contents: &[u8],
+    ) -> anyhow::Result<()> {
         // insert `idx_path` into `self.dataset.paths`, and get a ref to the `path` in `paths`
         // for use in the `Chunk`.
+        todo!()
     }
 
     fn manifest_as_ref(&self) -> &Manifest {
