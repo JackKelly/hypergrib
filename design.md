@@ -58,8 +58,11 @@ struct NwpKey {
   forecast_step: Timedelta,
   nwp_variable: Variable,  // `Variable` is an enum
   vertical_level: VerticalLevel, // `VerticalLevel` is an enum?
+  // Also for consideration:
+  // provider: Provider,  // e.g. NOAA, UKMetOffice, ECMWF, etc.
+  // nwp_model: NWPModel,  // e.g. GFS, GEFS, UKV, etc.
+  // or maybe combine `provider` and `nwp_model` into a single Enum e.g. UKMO_UKV, etc?
 }
-
 
 struct Chunk<'p> {
   path: &'p object_store::Path,
@@ -85,6 +88,7 @@ struct NwpCoordLabels {
   vertical_level: SortedVecSet<VerticalLevel>,
 }
 
+// Or maybe this doesn't have to be generic over K and COORDS? Will all datasets use the same key and coords?
 struct Dataset<K, COORDS>
 where
   K: PartialEq + Eq + Hash,
