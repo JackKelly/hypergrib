@@ -47,7 +47,11 @@ The integer indexes get passed to the `hypergrib` backend for xarray. (In the fu
 noaa-gefs-pds/gefs.<init date>/<init hour>/pgrb2b/gep<ensemble member>.t<init hour>z.pgrb2af<step>`
 3. In parallel, submit GET requests for all these `.idx` files.
 4. As soon as an `.idx` file arrives, decode it, and look up byte ranges of the GRIB files we need, and immediately submit GET requests for those byte ranges of the GRIB file. (This step is probably so fast that we perhaps don't need to multi-thread this... for the MVP, let's use a single thread for decoding `.idx` files and if that's too slow then we can add more threads). Maybe stop decoding rows in the `.idx` file once we've found all the metadata we need.
-5. If an `.idx` file doesn't exist then insert the MISSING DATA indicator into the array (which will probably be NaN for floating point data).
+5. If an `.idx` file doesn't exist then:
+    - Log a warning.
+    - Look for the corresponding GRIB file. If that exists then scan that GRIB. And keep the GRIB in memory because we'll want to read array data from it.
+    - (Maybe, in a future version, we could offer the option to generate and cache `.idx` files locally)
+    - If no GRIB exists then log another warning and insert the MISSING DATA indicator into the array (which will probably be NaN for floating point data).
 6. As soon as GRIB data arrives, decode it, and place it into the final array. Decoding GRIB data should be multi-threaded.
 
 ## If it's too slow to get `.idx` files:
@@ -56,4 +60,5 @@ noaa-gefs-pds/gefs.<init date>/<init hour>/pgrb2b/gep<ensemble member>.t<init ho
 - Store `.idx` files locally?
 - Convert `.idx` files to a more concise and cloud-friendly file format, which is published in a bucket?
 - Put all the `.idx` data into a cloud-side database?
+- Put all the `.idx` data into a local database? DuckDB?
 - We probably want to avoid using a manifest file, or putting metadata for every GRIB message into a database, because we want to scale to datasets with _trillions_ of GRIB messages. See https://github.com/JackKelly/hypergrib/discussions/14
