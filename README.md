@@ -1,6 +1,6 @@
 # hypergrib
 
-> **Warning**
+> [!WARNING]
 > This code is at its very earliest stage! It won't do anything useful for a while!
 
 Lazily read petabytes of [GRIB](https://en.wikipedia.org/wiki/GRIB) files from cloud object storage, as fast as the hardware will allow.
