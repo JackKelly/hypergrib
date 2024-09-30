@@ -1,6 +1,8 @@
 use clap::Parser;
-use futures_util::StreamExt;
-use object_store;
+use futures_util::{Stream, StreamExt, TryFutureExt};
+use object_store::ObjectMeta;
+use std::fs;
+use std::future;
 use url::Url;
 
 /// Create a manifest from GRIB `.idx` files.
@@ -29,16 +31,42 @@ pub async fn main() {
     }
     let (store, path) = object_store::parse_url_opts(&args.url, opts).unwrap();
 
-    // Get listing:
-    let mut list_stream = store.list(Some(&path));
+    // Get listing of .idx files:
+    let mut list_stream = filter_by_ext(store.list(Some(&path)), "idx");
 
     // Print listing:
     let mut i = 0;
     while let Some(meta) = list_stream.next().await.transpose().unwrap() {
         println!("Name: {}, size: {}", meta.location, meta.size);
+
+        // Write idx file to local filesystem
+        let bytes = store
+            .get(&meta.location)
+            .and_then(|get_result| get_result.bytes());
+        fs::write(
+            meta.location.filename().expect("failed to get filename"),
+            bytes.await.expect("failed to get bytes"),
+        )
+        .expect("failed to write local file");
+
         i += 1;
         if i > 10 {
             break;
         }
     }
+}
+
+/// Filter a stream of `object_store::Result<object_store::ObjectMeta>` to select only the items
+/// which have a file extension which matches `extension`.
+fn filter_by_ext<'a>(
+    stream: impl Stream<Item = object_store::Result<ObjectMeta>> + 'a,
+    extension: &'static str,
+) -> impl Stream<Item = object_store::Result<ObjectMeta>> + 'a {
+    stream.filter(move |list_result| {
+        future::ready(list_result.as_ref().is_ok_and(|meta| {
+            meta.location
+                .extension()
+                .is_some_and(|ext| ext == extension)
+        }))
+    })
 }

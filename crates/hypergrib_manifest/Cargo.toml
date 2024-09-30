@@ -12,9 +12,14 @@ authors.workspace = true
 
 [dependencies] # In alphabetical order
 anyhow.workspace = true
+bytes.workspace = true
+chrono.workspace = true
 clap = { workspace = true, features = ["derive"] }
+csv.workspace = true
 futures-util.workspace = true
+gribberish.workspace = true
 indicatif.workspace = true
 object_store = { workspace = true, features = ["aws"] }
+serde.workspace = true
 tokio.workspace = true
 url.workspace = true
