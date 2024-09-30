@@ -33,7 +33,7 @@ For more info, please see [this blog post](https://openclimatefix.org/post/lazy-
 - [ ] Algorithmically generate filenames of `.idx` files from coord labels.
 - [ ] Given a user query (expressed as integery index ranges for each dimension), convert to coord labels, and generate a list of `.idx` files to load.
 - [ ] Submit GET requests in parallel for those `.idx` files.
-- [ ] See `design.md` for more tasks
+- [ ] See [`design.md`](https://github.com/JackKelly/hypergrib/blob/main/design.md) for more tasks.
 - [ ] Schedule the network IO to balance several different objectives:
   - [ ] Keep a few hundred network request in-flight at any given moment (user configurable). (Why? Because the [AnyBlob paper](https://www.vldb.org/pvldb/vol16/p2769-durner.pdf) suggests that is what's required to achieve max throughput).
   - [ ] Consolidate nearby byterange requests (user configurable) to minimise overhead, and reduce the total number of IO operations.
