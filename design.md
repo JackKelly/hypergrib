@@ -50,3 +50,10 @@ noaa-gefs-pds/gefs.<init date>/<init hour>/pgrb2b/gep<ensemble member>.t<init ho
 5. If an `.idx` file doesn't exist then insert the MISSING DATA indicator into the array (which will probably be NaN for floating point data).
 6. As soon as GRIB data arrives, decode it, and place it into the final array. Decoding GRIB data should be multi-threaded.
 
+## If it's too slow to get `.idx` files:
+
+- For small GRIB files, just read the entirety of each GRIB file?
+- Store `.idx` files locally?
+- Convert `.idx` files to a more concise and cloud-friendly file format, which is published in a bucket?
+- Put all the `.idx` data into a cloud-side database?
+- We probably want to avoid using a manifest file, or putting metadata for every GRIB message into a database, because we want to scale to datasets with _trillions_ of GRIB messages. See https://github.com/JackKelly/hypergrib/discussions/14
