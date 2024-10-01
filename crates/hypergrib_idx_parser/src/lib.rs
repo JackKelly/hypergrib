@@ -1,12 +1,14 @@
 #[doc = include_str!("../README.md")]
 use anyhow;
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
+use serde::Deserialize;
 
 #[derive(PartialEq, Debug, serde::Deserialize)]
 struct IdxRecord {
     msg_id: u32,
     byte_offset: u32,
-    init_datetime: String,      // TODO: Use Datetime<Utc>
+    #[serde(deserialize_with = "deserialize_init_datetime")]
+    init_datetime: DateTime<Utc>,
     product: String,            // TODO: Use Product enum?
     level: String,              // TODO: Use VerticalLevel enum?
     step: String,               // TODO: Use TimeDelta?
@@ -26,8 +28,22 @@ fn parse_idx(b: &[u8]) -> anyhow::Result<Vec<IdxRecord>> {
     Ok(records)
 }
 
+pub fn deserialize_init_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mut s = String::deserialize(deserializer)?;
+    s.push_str("00"); // Hack because `parse_from_str` requires that the input string includes
+                      // both hours and minutes, and GRIB `.idx` files don't contain minutes.
+    NaiveDateTime::parse_from_str(&s, "d=%Y%m%d%H%M")
+        .map(|ndt| ndt.and_utc())
+        .map_err(|e| serde::de::Error::custom(format!("Invalid init_datetime: {e}")))
+}
+
 #[cfg(test)]
 mod tests {
+    use chrono::NaiveDate;
+
     use super::*;
 
     #[test]
@@ -45,7 +61,11 @@ mod tests {
             IdxRecord {
                 msg_id: 1,
                 byte_offset: 0,
-                init_datetime: String::from("d=2017010100"),
+                init_datetime: NaiveDate::from_ymd_opt(2017, 1, 1)
+                    .unwrap()
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap()
+                    .and_utc(),
                 product: String::from("HGT"),
                 level: String::from("10 mb"),
                 step: String::from("anl"),
