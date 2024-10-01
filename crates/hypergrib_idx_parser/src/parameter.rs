@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use gribberish::templates::product::parameters::meteorological;
 
 #[derive(PartialEq, Debug)]
@@ -19,7 +21,17 @@ impl<'de> serde::Deserialize<'de> for Parameter {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        match s.as_str() {
+        Parameter::from_str(&s).map_err(|e| serde::de::Error::custom(format!("{e:?}")))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseParameterError(String);
+
+impl FromStr for Parameter {
+    type Err = ParseParameterError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
             "TMP" => Ok(Self::Temperature(
                 meteorological::TemperatureProduct::Temperature,
             )),
@@ -31,7 +43,7 @@ impl<'de> serde::Deserialize<'de> for Parameter {
                 meteorological::MomentumProduct::UComponentWindSpeed,
             )),
             // TODO: Implement deser for other parameter strings!
-            _ => Err(serde::de::Error::custom(format!(
+            _ => Err(ParseParameterError(format!(
                 "Failed to parse parameter: {s}"
             ))),
         }
