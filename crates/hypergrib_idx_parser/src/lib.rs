@@ -2,18 +2,15 @@
 use anyhow;
 use chrono::{DateTime, TimeDelta, Utc};
 
-pub mod datasets;
-
 #[derive(PartialEq, Debug, serde::Deserialize)]
 struct IdxRecord {
     msg_id: u32,
     byte_offset: u32,
-    init_datetime: String, // TODO: Use Datetime<Utc>
-    product: String,       // TODO: Use Product enum?
-    level: String,         // TODO: Use VerticalLevel enum?
-    step: String,          // TODO: Use TimeDelta?
+    init_datetime: String,      // TODO: Use Datetime<Utc>
+    product: String,            // TODO: Use Product enum?
+    level: String,              // TODO: Use VerticalLevel enum?
+    step: String,               // TODO: Use TimeDelta?
     ens_member: Option<String>, // TODO: Use EnsembleMember enum?
-                           // TODO: msg_length: u32  // In bytes
 }
 
 fn parse_idx(b: &[u8]) -> anyhow::Result<Vec<IdxRecord>> {
@@ -26,16 +23,6 @@ fn parse_idx(b: &[u8]) -> anyhow::Result<Vec<IdxRecord>> {
         records.push(result?);
     }
     Ok(records)
-}
-
-trait ToIdxLocation {
-    fn to_idx_location(
-        init_datetime: DateTime<Utc>,
-        product: String,
-        level: String,
-        step: TimeDelta,
-        ens_member: Option<u32>,
-    ) -> object_store::path::Path;
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+pub mod datasets;
 use chrono::{DateTime, TimeDelta, Utc};
 
 // TODO: Replace this with Enums from gribberish.
@@ -97,6 +98,16 @@ struct MessageLocation {
 //   vertical_level: SortedVecSet<VerticalLevel>,
 // }
 //
+
+trait ToIdxLocation {
+    fn to_idx_location(
+        init_datetime: DateTime<Utc>,
+        product: String,
+        level: String,
+        step: TimeDelta,
+        ens_member: Option<u32>,
+    ) -> object_store::path::Path;
+}
 
 #[cfg(test)]
 mod tests {
