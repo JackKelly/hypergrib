@@ -13,10 +13,15 @@ struct IdxRecord {
     #[serde(deserialize_with = "deserialize_init_datetime")]
     init_datetime: DateTime<Utc>,
     parameter: Parameter,
-    level: String, // TODO: Use VerticalLevel enum?
+    level: String,
+    // TODO: Define `struct Level{
+    //     fixed_surface_type: gribberish::templates::product::tables::FixedSurfaceType,
+    //     value: Option<f32>
+    // }`
+    // e.g. "10 mb" would be `Level{FixedSurfaceType::IsobaricSurface, 10}`
     #[serde(deserialize_with = "deserialize_step")]
     step: TimeDelta,
-    ens_member: Option<String>, // TODO: Use EnsembleMember enum?
+    ens_member: Option<String>, // TODO: Define `enum EnsembleMember{Control, Perturbed(u16)}`?
 }
 
 // TODO: Return an iterator where each item is a `Result<IdxRecord>`.
