@@ -1,6 +1,6 @@
 #[doc = include_str!("../README.md")]
 use anyhow;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 use serde::Deserialize;
 
 #[derive(PartialEq, Debug, serde::Deserialize)]
@@ -9,9 +9,10 @@ struct IdxRecord {
     byte_offset: u32,
     #[serde(deserialize_with = "deserialize_init_datetime")]
     init_datetime: DateTime<Utc>,
-    product: String,            // TODO: Use Product enum?
-    level: String,              // TODO: Use VerticalLevel enum?
-    step: String,               // TODO: Use TimeDelta?
+    product: String, // TODO: Use Product enum?
+    level: String,   // TODO: Use VerticalLevel enum?
+    #[serde(deserialize_with = "deserialize_step")]
+    step: TimeDelta,
     ens_member: Option<String>, // TODO: Use EnsembleMember enum?
 }
 
@@ -38,6 +39,20 @@ where
     NaiveDateTime::parse_from_str(&s, "d=%Y%m%d%H%M")
         .map(|ndt| ndt.and_utc())
         .map_err(|e| serde::de::Error::custom(format!("Invalid init_datetime: {e}")))
+}
+
+pub fn deserialize_step<'de, D>(deserializer: D) -> Result<TimeDelta, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    match s.as_str() {
+        "anl" => Ok(TimeDelta::zero()),
+        // TODO: Implement other strings!
+        _ => Err(serde::de::Error::custom(format!(
+            "Failed to parse forecast step: {s}"
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -68,7 +83,7 @@ mod tests {
                     .and_utc(),
                 product: String::from("HGT"),
                 level: String::from("10 mb"),
-                step: String::from("anl"),
+                step: TimeDelta::zero(),
                 ens_member: Some(String::from("ENS=low-res ctl")),
             }
         );
