@@ -43,3 +43,11 @@ For more info, please see [this blog post](https://openclimatefix.org/post/lazy-
 
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
+
+## References
+
+### GRIB2 documentation
+
+- [wgrib C source code](https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c)
+- [NCEP WMO GRIB2 Documentation](https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/)
+- [GRIB2 use at NCEP](https://www.nco.ncep.noaa.gov/pmb/docs/grib2/)
