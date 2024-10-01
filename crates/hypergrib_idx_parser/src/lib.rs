@@ -1,7 +1,10 @@
 #[doc = include_str!("../README.md")]
 use anyhow;
 use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
+use parameter::Parameter;
 use serde::Deserialize;
+
+mod parameter;
 
 #[derive(PartialEq, Debug, serde::Deserialize)]
 struct IdxRecord {
@@ -9,8 +12,8 @@ struct IdxRecord {
     byte_offset: u32,
     #[serde(deserialize_with = "deserialize_init_datetime")]
     init_datetime: DateTime<Utc>,
-    product: String, // TODO: Use Product enum?
-    level: String,   // TODO: Use VerticalLevel enum?
+    parameter: Parameter,
+    level: String, // TODO: Use VerticalLevel enum?
     #[serde(deserialize_with = "deserialize_step")]
     step: TimeDelta,
     ens_member: Option<String>, // TODO: Use EnsembleMember enum?
@@ -48,7 +51,8 @@ where
     let s = String::deserialize(deserializer)?;
     match s.as_str() {
         "anl" => Ok(TimeDelta::zero()),
-        // TODO: Implement other strings!
+        // TODO: Implement deser for other step strings! See:
+        // https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c#L2248-L2446
         _ => Err(serde::de::Error::custom(format!(
             "Failed to parse forecast step: {s}"
         ))),
@@ -58,6 +62,7 @@ where
 #[cfg(test)]
 mod tests {
     use chrono::NaiveDate;
+    use gribberish::templates::product::parameters::meteorological;
 
     use super::*;
 
@@ -81,7 +86,7 @@ mod tests {
                     .and_hms_opt(0, 0, 0)
                     .unwrap()
                     .and_utc(),
-                product: String::from("HGT"),
+                parameter: Parameter::Mass(meteorological::MassProduct::GeopotentialHeight),
                 level: String::from("10 mb"),
                 step: TimeDelta::zero(),
                 ens_member: Some(String::from("ENS=low-res ctl")),
