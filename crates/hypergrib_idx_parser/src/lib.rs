@@ -13,6 +13,7 @@ struct IdxRecord {
     ens_member: Option<String>, // TODO: Use EnsembleMember enum?
 }
 
+// TODO: Return an iterator where each item is a `Result<IdxRecord>`.
 fn parse_idx(b: &[u8]) -> anyhow::Result<Vec<IdxRecord>> {
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b':')
