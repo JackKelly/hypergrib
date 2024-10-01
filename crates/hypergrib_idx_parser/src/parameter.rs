@@ -30,6 +30,8 @@ pub struct ParseParameterError(String);
 
 impl FromStr for Parameter {
     type Err = ParseParameterError;
+    // TODO: Can we crate a Rust macro to automatically map from `abbrev` strings that already
+    // exist in `gribberish`? See https://github.com/mpiannucci/gribberish/issues/41#issuecomment-2386495107
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "TMP" => Ok(Self::Temperature(
