@@ -69,13 +69,17 @@ where
     let s = <&str>::deserialize(deserializer)?;
     match s {
         "anl" => Ok(TimeDelta::zero()),
-        // TODO: Implement deser for other step strings! See:
-        // https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c#L2248-L2446
-        // Even better, use existing strings from gribberish.
         _ => Err(serde::de::Error::custom(format!(
             "Failed to parse forecast step: {s}"
         ))),
     }
+    // TODO: Implement deserialisation for other step strings! See:
+    // https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c#L2248-L2446
+    // Even better, use existing strings from gribberish, although this will require
+    // adding `abbrev` annotations to the relevant gribberish enums, and defining
+    // a `FromAbbrev` proc macro. The relevant gribberish enums might be
+    // `GeneratingProcess` and/or `ReferenceDataSignificance`. Also see:
+    // https://github.com/mpiannucci/gribberish/blob/1e35224773d4c174b4db59875a55438921898e2e/gribberish/src/message_metadata.rs#L96
 }
 
 #[cfg(test)]
