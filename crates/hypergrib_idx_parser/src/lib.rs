@@ -41,6 +41,7 @@ pub fn deserialize_init_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc
 where
     D: serde::Deserializer<'de>,
 {
+    // TODO: Can we get rid of this String allocation?
     let mut s = String::deserialize(deserializer)?;
     s.push_str("00"); // Hack because `parse_from_str` requires that the input string includes
                       // both hours and minutes, and GRIB `.idx` files don't contain minutes.
@@ -53,6 +54,7 @@ pub fn deserialize_step<'de, D>(deserializer: D) -> Result<TimeDelta, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
+    // TODO: Can we get rid of this String allocation?
     let s = String::deserialize(deserializer)?;
     match s.as_str() {
         "anl" => Ok(TimeDelta::zero()),
