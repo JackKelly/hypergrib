@@ -41,10 +41,12 @@ pub fn deserialize_init_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc
 where
     D: serde::Deserializer<'de>,
 {
-    // TODO: Can we get rid of this String allocation?
-    let mut s = String::deserialize(deserializer)?;
-    s.push_str("00"); // Hack because `parse_from_str` requires that the input string includes
-                      // both hours and minutes, and GRIB `.idx` files don't contain minutes.
+    let s = <&str>::deserialize(deserializer)?;
+    // TODO: Can we get rid of this String allocation? e.g. by parsing into a data,
+    // and then converting the last two digits into an int?
+    let s = format!("{s}00"); // Hack because `parse_from_str` requires that the input
+                              // string includes both hours and minutes, and GRIB
+                              // `.idx` files don't contain minutes.
     NaiveDateTime::parse_from_str(&s, "d=%Y%m%d%H%M")
         .map(|ndt| ndt.and_utc())
         .map_err(|e| serde::de::Error::custom(format!("Invalid init_datetime: {e}")))
@@ -54,9 +56,8 @@ pub fn deserialize_step<'de, D>(deserializer: D) -> Result<TimeDelta, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    // TODO: Can we get rid of this String allocation?
-    let s = String::deserialize(deserializer)?;
-    match s.as_str() {
+    let s = <&str>::deserialize(deserializer)?;
+    match s {
         "anl" => Ok(TimeDelta::zero()),
         // TODO: Implement deser for other step strings! See:
         // https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c#L2248-L2446

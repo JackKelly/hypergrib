@@ -20,11 +20,8 @@ impl<'de> serde::Deserialize<'de> for Parameter {
     where
         D: serde::Deserializer<'de>,
     {
-        // TODO: Can we get rid of this String allocation?
-        // Maybe using deserializer.deserialize_str(visitor)?
-        // Or maybe using serde_byes::ByteBuf?
-        let s = String::deserialize(deserializer)?;
-        Parameter::from_str(&s).map_err(|e| serde::de::Error::custom(format!("{e:?}")))
+        let s = <&str>::deserialize(deserializer)?;
+        Parameter::from_str(s).map_err(|e| serde::de::Error::custom(format!("{e:?}")))
     }
 }
 
