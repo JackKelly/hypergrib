@@ -1,6 +1,6 @@
 #[doc = include_str!("../README.md")]
 use anyhow;
-use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeDelta, Utc};
 use parameter::Parameter;
 use serde::Deserialize;
 
@@ -42,16 +42,24 @@ where
     D: serde::Deserializer<'de>,
 {
     let s = <&str>::deserialize(deserializer)?;
-    // TODO: Can we get rid of this String allocation? e.g.
-    // let (date, remainder) = NaiveDate::parse_and_remainder(s, "d=%Y%m%d")?;
-    // let hour = <u32>::parse(remainder)?;
-    // let dt = date.and_hms_opt(hour, 0, 0)?.and_utc();
-    let s = format!("{s}00"); // Hack because `parse_from_str` requires that the input
-                              // string includes both hours and minutes, and GRIB
-                              // `.idx` files don't contain minutes.
-    NaiveDateTime::parse_from_str(&s, "d=%Y%m%d%H%M")
-        .map(|ndt| ndt.and_utc())
-        .map_err(|e| serde::de::Error::custom(format!("Invalid init_datetime: {e}")))
+    // The slightly convoluted approach below is necessary because `NaiveDateTime::parse_str`
+    // requires the input string to include the hour but `.idx` files don't include hours!
+    // So we _could_ implement a hack whereby we append "00" to the end of `s` but that requires
+    // a heap allocation for every row of the `.idx`. The advantage of the approach below
+    // is that it doesn't require any heap allocations.
+    let (date, remainder) = NaiveDate::parse_and_remainder(s, "d=%Y%m%d")
+        .map_err(|e| serde::de::Error::custom(format!("Invalid init date: {e}")))?;
+    let hour: u32 = remainder.parse().map_err(|e| {
+        serde::de::Error::custom(format!(
+            "Hour of the NWP init could not be parsed into a u32: {e}"
+        ))
+    })?;
+    match date.and_hms_opt(hour, 0, 0) {
+        Some(dt) => Ok(dt.and_utc()),
+        None => Err(serde::de::Error::custom(format!(
+            "Invalid init hour: {hour}"
+        ))),
+    }
 }
 
 pub fn deserialize_step<'de, D>(deserializer: D) -> Result<TimeDelta, D::Error>
@@ -63,6 +71,7 @@ where
         "anl" => Ok(TimeDelta::zero()),
         // TODO: Implement deser for other step strings! See:
         // https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c#L2248-L2446
+        // Even better, use existing strings from gribberish.
         _ => Err(serde::de::Error::custom(format!(
             "Failed to parse forecast step: {s}"
         ))),
