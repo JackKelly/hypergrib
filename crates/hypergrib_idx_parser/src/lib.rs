@@ -42,8 +42,10 @@ where
     D: serde::Deserializer<'de>,
 {
     let s = <&str>::deserialize(deserializer)?;
-    // TODO: Can we get rid of this String allocation? e.g. by parsing into a data,
-    // and then converting the last two digits into an int?
+    // TODO: Can we get rid of this String allocation? e.g.
+    // let (date, remainder) = NaiveDate::parse_and_remainder(s, "d=%Y%m%d")?;
+    // let hour = <u32>::parse(remainder)?;
+    // let dt = date.and_hms_opt(hour, 0, 0)?.and_utc();
     let s = format!("{s}00"); // Hack because `parse_from_str` requires that the input
                               // string includes both hours and minutes, and GRIB
                               // `.idx` files don't contain minutes.
