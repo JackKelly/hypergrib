@@ -16,9 +16,9 @@ For more info on the background and motivation for `hypergrib`, please see [this
 
 ## Goals
 - Allow users to lazily open petabyte-scale [GRIB](https://en.wikipedia.org/wiki/GRIB) datasets from their laptop with a single line of code: `xr.open_dataset`.
-- Scale to datasets with _trillions_ of GRIB messages (see https://github.com/JackKelly/hypergrib/discussions/14)
+- Lazily open a GRIB dataset with _trillions_ of GRIB messages within a fraction of a second, and minimal memory footprint (see https://github.com/JackKelly/hypergrib/discussions/14)
 - Create and constantly update metadata for the main public NWP datasets (so users don't have to do this themselves).
-- High performance: low latency and high bandwidth. A virtual machine with a 200 Gbps (gigabit per second) network interface card in the same region as the data should be able to read GRIBs at ~20 gigabytes per second from object storage. Each load should incur minimal latency. Random access should be as fast & efficient as possible.
+- High performance reading of GRIB binary data: low latency and high bandwidth. A virtual machine with a 200 Gbps (gigabit per second) network interface card in the same region as the data should be able to read GRIBs at ~20 gigabytes per second from object storage. Each load should incur minimal latency. Random access should be as fast & efficient as possible.
 - Computational efficiency and "mechanical sympathy" with cloud object storage
 - Integrate with:
     - xarray
