@@ -8,7 +8,7 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
     - Get a list of init datetimes, ensemble members, and steps by getting a listing of all `.idx` filenames. Record if/when the coordinates change. The GEFS filenames include all this information. Although this will be a dataset-specific feature. Other datasets might not include all this info in the filenames.
     - Get a list of parameters and vertical levels by reading the first day's worth of `.idx` files, and read the last day's worth of `.idx` files. Beware that, for example, the GEFS analysis step doesn't include the same parameters as the forecast steps! If the first and last days have the same coordinate labels then assume that the coordinate labels stay the same across the entire dataset. If the coords in the first and last days differ then begin an "over-eager" binary search of the `.idx` files to find when coordinates change (e.g. when the NWP is upgraded an more ensemble members are added - see https://github.com/JackKelly/hypergrib/discussions/15). Submit many GET requests at once. The coords might change more than once.
 - [ ] Get the horizontal spatial coordinates: Read a day's worth of GRIB files at the start of the dataset, and a day's worth at the end of the dataset. If the start and end of the dataset have the same coordinates then we're done; let's assume the spatial coords stay the same across the dataset. Otherwise conduct a kind of over-eager binary search to find exactly where the horizontal spatial coords change. The coords might change more than once.
-- [ ] Record the dimension names, array shape, and coordinates in a JSON file. Also record when the coordinates change. Changes in horizontal resolution probably have to be loaded as different xarray datasets (see https://github.com/JackKelly/hypergrib/discussions/15).
+- [ ] Record the dimension names, array shape, and coordinates in a JSON file. Also record when the coordinates change. Changes in horizontal resolution probably have to be loaded as different xarray datasets (see https://github.com/JackKelly/hypergrib/discussions/15 and https://github.com/JackKelly/hypergrib/discussions/17).
 
 ## Step 2: Load the metadata and load data
 
@@ -56,6 +56,7 @@ The integer indexes get passed to the `hypergrib` backend for xarray. (In the fu
 
 ### Planned `hypergrib` MVP features:
 
+- [ ] Load the `hypergrib` metadata (which was produced by step 1).
 - [ ] Convert integer indicies back to coordinate labels by looking up the appropriate labels in `hypergrib`'s coords arrays.
 - [ ] Find the unique tuples of init date, init hour, ensemble member, and step.
 - [ ] Algorithmically generate the location of all the `.idx` files we need. For example, the GEFS location strings look like this: `
@@ -84,9 +85,7 @@ Set the threshold to 100% to always try to load the `.idx` file before the GRIB.
 Set the threshold to 0% to never load the `.idx`, and always load the GRIB file first.
 
 #### Define an extended idx format
-- "Sequences of GRIB sections 2 to 7, sections 3 to 7 or sections 4 to 7 may be repeated within a single GRIB message" (quoted from the [WMO Manual on Codes](https://library.wmo.int/records/item/35625-manual-on-codes-volume-i-2-international-codes)). Describe the byte offset of each data section? Because we want to allow users to load only the data sections that they need.
-- Include the message length in each row!
-- Describe the coord labels, dim names, and when the coord labels change in the metadata.
+See https://github.com/JackKelly/hypergrib/discussions/17
 
 #### Schedule the network IO to balance several different objectives:
 - Keep a few hundred network request in-flight at any given moment (user configurable). (Why? Because the [AnyBlob paper](https://www.vldb.org/pvldb/vol16/p2769-durner.pdf) suggests that is what's required to achieve max throughput).
