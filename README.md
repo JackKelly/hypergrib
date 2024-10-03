@@ -3,7 +3,7 @@
 > [!WARNING]
 > This code is at a very early stage! It won't do anything useful for a while!
 
-This project is inspired by [kerchunk](https://fsspec.github.io/kerchunk/), [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr), [dynamical.org](https://dynamical.org), [gribberish](https://github.com/mpiannucci/gribberish), [xarray](https://docs.xarray.dev/en/stable/), [NODD](https://www.noaa.gov/nodd), and many other great projects!
+This project is inspired by [kerchunk](https://fsspec.github.io/kerchunk/), [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr), [dynamical.org](https://dynamical.org), [gribberish](https://github.com/mpiannucci/gribberish), [xarray](https://docs.xarray.dev/en/stable/), [NODD](https://www.noaa.gov/nodd), [Camus Energy's work with GRIB files](https://discourse.pangeo.io/t/pangeo-showcase-optimizations-for-kerchunk-aggregation-and-zarr-i-o-at-scale-for-machine-learning/4074/3), and many other great projects!
 
 ## Background
 There are tens of petabytes of GRIB datasets in public cloud object stores. Wouldn't it be nice to be able to lazily open these datasets as easily as possible?!
