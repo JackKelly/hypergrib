@@ -84,7 +84,7 @@ Set the threshold to 100% to always try to load the `.idx` file before the GRIB.
 Set the threshold to 0% to never load the `.idx`, and always load the GRIB file first.
 
 #### Define an extended idx format
-- "Sequences of GRIB sections 2 to 7, sections 3 to 7 or sections 4 to 7 may be repeated within a single GRIB message" (quoted from the [WMO Manual on Codes](https://library.wmo.int/viewer/35625/download?file=WMO-306-v-I-2-2023_en.pdf)). Describe the byte offset of each data section? Because we want to allow users to load only the data sections that they need.
+- "Sequences of GRIB sections 2 to 7, sections 3 to 7 or sections 4 to 7 may be repeated within a single GRIB message" (quoted from the [WMO Manual on Codes](https://library.wmo.int/records/item/35625-manual-on-codes-volume-i-2-international-codes)). Describe the byte offset of each data section? Because we want to allow users to load only the data sections that they need.
 - Include the message length in each row!
 - Describe the coord labels, dim names, and when the coord labels change in the metadata.
 

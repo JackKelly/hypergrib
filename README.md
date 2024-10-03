@@ -43,7 +43,7 @@ For the planned design, please see [design.md](https://github.com/JackKelly/hype
 
 ## GRIB2 documentation
 
-1. [WMO Manual on Codes, Volume I.2, 2023 edition](https://library.wmo.int/viewer/35625/download?file=WMO-306-v-I-2-2023_en.pdf) - See overview diagram of GRIB messages on PDF page 21.
+1. [WMO Manual on Codes, Volume I.2, 2023 edition](https://library.wmo.int/records/item/35625-manual-on-codes-volume-i-2-international-codes) - See overview diagram of GRIB messages on PDF page 21.
 2. [wgrib C source code](https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c)
 3. [NCEP WMO GRIB2 Documentation](https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/)
 4. [GRIB2 use at NCEP](https://www.nco.ncep.noaa.gov/pmb/docs/grib2/)
