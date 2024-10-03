@@ -19,13 +19,13 @@ The ultimate dream is to be able to train large machine learning models directly
 
 ## Goals
 - Allow users to lazily open petabyte-scale NWP datasets from their laptop with a single line of code: `xr.open_dataset`.
+- Scale to datasets with _trillions_ of GRIB messages (see https://github.com/JackKelly/hypergrib/discussions/14)
 - Create and constantly update metadata for the main public NWP datasets (so users don't have to do this themselves).
 - Performance: low latency and high bandwidth. A VM with a 200 Gbps NIC should sustain 20 gigabytes per sec from cloud object storage.
 - Computational efficiency and "mechanical sympathy" with cloud object storage
-- Scale to datasets with _trillions_ of GRIB messages
-- Integrate with xarray
-- Integrate with virtualizarr. See [VirtualiZarr/Add hypergrib as as a grib reader #238](https://github.com/zarr-developers/VirtualiZarr/issues/238)
-- [ ] Benchmark! See recent discussion on "[Large Scale Geospatial Benchmarks](https://discourse.pangeo.io/t/large-scale-geospatial-benchmarks/4498/2)" on the Pangeo forum.
+- Integrate with:
+    - xarray
+    - virtualizarr. See [VirtualiZarr/Add hypergrib as as a grib reader #238](https://github.com/zarr-developers/VirtualiZarr/issues/238)
 
 ## Why does `hypergrib` exist?
 At least to start with, `hypergrib` is an experiment (which stands on the shoulders of giants like `gribberish`, `kerchunk`, `Zarr`, `xarray`, `VirtualiZarr` etc.). The question we're asking with this experiment is: How fast can we go if we "cheat" by building a _special-purpose_ tool focused on reading multi-file GRIB datasets from cloud object storage. Let's throw in all the performance tricks we can think of. And let's also bake in a bunch of domain knowledge about GRIBs. We're explicitly _not_ trying to build a general-purpose tool like the awesome `kerchunk`. If `hypergrib` is faster than existing approaches, then maybe ideas from `hypergrib` could be merged into existing tools, and `hypergrib` will remain a testing ground rather than a production tool. Or maybe `hypergrib` will mature into a tool that can be used in production.
@@ -45,9 +45,7 @@ For more info on the background and motivation for `hypergrib`, please see [this
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
 
-## References
-
-### GRIB2 documentation
+## GRIB2 documentation
 
 1. [WMO Manual on Codes, Volume I.2, 2023 edition](https://library.wmo.int/viewer/35625/download?file=WMO-306-v-I-2-2023_en.pdf) - See overview diagram of GRIB messages on PDF page 21.
 2. [wgrib C source code](https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c)
