@@ -3,25 +3,22 @@
 > [!WARNING]
 > This code is at a very early stage! It won't do anything useful for a while!
 
-Lazily read petabytes of [GRIB](https://en.wikipedia.org/wiki/GRIB) files from cloud object storage, as fast as the hardware will allow.
+This project is inspired by [kerchunk](https://fsspec.github.io/kerchunk/), [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr), [dynamical.org](https://dynamical.org), [gribberish](https://github.com/mpiannucci/gribberish), [xarray](https://docs.xarray.dev/en/stable/), [NODD](https://www.noaa.gov/nodd), and many other great projects!
 
-This project is inspired by [kerchunk](https://fsspec.github.io/kerchunk/), [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr), and [dynamical.org](https://dynamical.org).
+## Background
+There are tens of petabytes of GRIB datasets in public cloud object stores. Wouldn't it be nice to be able to lazily open these datasets as easily as possible?!
 
-The aim is that opening a multi-petabyte GRIB dataset from cloud object storage should be as simple as:
+For example, the [NOAA Open Data Dissemination](https://www.noaa.gov/nodd) (NODD) programme has shared 59 petabytes so far (and growing rapidly), and [ECMWF](https://www.ecmwf.int/en/forecasts/datasets/open-data) are also busily sharing the bulk of their forecasts on cloud object storage. 
 
-```python
-dataset = xarray.open_dataset(URL, engine="hypergrib")
-```
+One ultimate dream is to be able to train large machine learning models directly from GRIBs on cloud object storage.
 
-`hypergrib` is focused on performance: A virtual machine with a 200 Gbps (gigabit per second) network interface card in the same region as the data should be able to read GRIBs at ~20 gigabytes per second from object storage. Each load should incur minimal latency. Random access should be as fast & efficient as possible.
-
-The ultimate dream is to be able to train large machine learning models directly from GRIBs on cloud object storage, such as the petabytes of GRIB files shared by the [NOAA Open Data Dissemination](https://www.noaa.gov/nodd) (NODD) programme, [ECMWF](https://www.ecmwf.int/en/forecasts/datasets/open-data), and others.
+For more info on the background and motivation for `hypergrib`, please see [this blog post](https://openclimatefix.org/post/lazy-loading-making-it-easier-to-access-vast-datasets-of-weather-satellite-data).
 
 ## Goals
-- Allow users to lazily open petabyte-scale NWP datasets from their laptop with a single line of code: `xr.open_dataset`.
+- Allow users to lazily open petabyte-scale [GRIB](https://en.wikipedia.org/wiki/GRIB) datasets from their laptop with a single line of code: `xr.open_dataset`.
 - Scale to datasets with _trillions_ of GRIB messages (see https://github.com/JackKelly/hypergrib/discussions/14)
 - Create and constantly update metadata for the main public NWP datasets (so users don't have to do this themselves).
-- Performance: low latency and high bandwidth. A VM with a 200 Gbps NIC should sustain 20 gigabytes per sec from cloud object storage.
+- High performance: low latency and high bandwidth. A virtual machine with a 200 Gbps (gigabit per second) network interface card in the same region as the data should be able to read GRIBs at ~20 gigabytes per second from object storage. Each load should incur minimal latency. Random access should be as fast & efficient as possible.
 - Computational efficiency and "mechanical sympathy" with cloud object storage
 - Integrate with:
     - xarray
@@ -40,7 +37,6 @@ There are read-patterns which will never be well-served by reading from GRIBs (b
 ## More info about `hypergrib`
 For the planned design, please see [design.md](https://github.com/JackKelly/hypergrib/blob/main/design.md).
 
-For more info on the background and motivation for `hypergrib`, please see [this blog post](https://openclimatefix.org/post/lazy-loading-making-it-easier-to-access-vast-datasets-of-weather-satellite-data).
 
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
