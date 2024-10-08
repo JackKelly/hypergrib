@@ -1,9 +1,9 @@
 //! NOAA's Global Ensemble Forecast System (GEFS).
 //! https://registry.opendata.aws/noaa-gefs
 
-use std::sync::Arc;
+use std::{error::Error, fmt::Display, sync::Arc};
 
-use chrono::{TimeDelta, Timelike};
+use chrono::{DateTime, NaiveDate, TimeDelta, Timelike, Utc};
 use futures_util::StreamExt;
 use object_store::ObjectStore;
 
@@ -85,9 +85,10 @@ impl GefsCoordLabelsBuilder {
 
         // Loop through each .idx filename:
         while let Some(meta) = list_stream.next().await.transpose().unwrap() {
+            let gefs_idx_loc = GefsIdxLocation::try_from(&meta.location)?;
             self.coord_labels_builder
                 .reference_datetime
-                .insert(extract_reference_datetime(&meta.location));
+                .insert(gefs_idx_loc.reference_datetime()?);
         }
         Ok(())
     }
@@ -99,6 +100,83 @@ impl crate::GetCoordLabels for GefsCoordLabelsBuilder {
         // TODO: self.extract_from_gribs().await?; // Maybe do concurrently with
         // extract_from_idx_paths?
         Ok(self.coord_labels_builder.build())
+    }
+}
+
+#[derive(Debug)]
+struct GefsIdxError {
+    path: object_store::path::Path,
+    error: String,
+}
+impl Display for GefsIdxError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Error: {}. For GEFS .idx path: {}",
+            self.error, self.path
+        )
+    }
+}
+impl Error for GefsIdxError {}
+
+// The path of the idx is like this:
+// noaa-gefs-pds/
+// gefs.<init date>/
+// <init hour>/
+// pgrb2b/
+// gep<ensemble member>.t<init hour>z.pgrb2af<step>
+struct GefsIdxLocation<'a> {
+    path: &'a object_store::path::Path,
+    parts: Vec<object_store::path::PathPart<'a>>,
+}
+
+impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxLocation<'a> {
+    type Error = GefsIdxError;
+
+    fn try_from(idx_location: &'a object_store::path::Path) -> Result<Self, Self::Error> {
+        let parts: Vec<_> = idx_location.parts().collect();
+        let i_start = match parts
+            .iter()
+            .position(|part| part.as_ref() == "noaa-gefs-pds")
+        {
+            Some(i) => i,
+            None => {
+                return Err(GefsIdxError {
+                    error: format!("Failed to find 'noaa-gefs-pds'"),
+                    path: idx_location.clone(),
+                })
+            }
+        };
+        let parts = &parts[i_start..];
+        const N_PARTS_EXPECTED: usize = 5;
+        if parts.len() != N_PARTS_EXPECTED {
+            return Err(GefsIdxError {
+                error: format!(
+                    "Expected {N_PARTS_EXPECTED} parts in the path of the idx file. Found {} parts instead",
+                    parts.len()
+                    ),
+                path: idx_location.clone(),
+            });
+        }
+        Ok(Self {
+            path: idx_location,
+            parts: parts.to_vec(),
+        })
+    }
+}
+
+impl GefsIdxLocation<'_> {
+    fn reference_datetime(&self) -> anyhow::Result<DateTime<Utc>> {
+        let date = NaiveDate::parse_from_str(self.parts[1].as_ref(), "gefs.%Y%m%d")?;
+        let hour: u32 = self.parts[2].as_ref().parse()?;
+        match date.and_hms_opt(hour, 0, 0) {
+            Some(dt) => Ok(dt.and_utc()),
+            None => Err(GefsIdxError {
+                error: format!("Invalid hour {hour} when parsing idx"),
+                path: self.path.clone(),
+            }
+            .into()),
+        }
     }
 }
 
