@@ -1,29 +1,17 @@
-use std::sync::Arc;
+use std::{collections::HashSet, future, sync::Arc};
 
 pub mod datasets;
 use chrono::{DateTime, TimeDelta, Utc};
+use futures_util::{Stream, StreamExt};
+use object_store::{ObjectMeta, ObjectStore};
 
-// TODO: Replace this with Enums from gribberish.
-#[derive(PartialEq, Eq, Hash, Clone)]
-enum EnsembleMember {
-    Control,
-    Perturbed(u16),
-    Mean,
-    Spread,
-}
-
-// TODO: Key can probably be replaced by a similar enum in `hypergrib_idx_parser`?
 // #[derive(PartialEq, Eq, Hash, Clone)] // PartialEq, Eq, and Hash are required for HashMap keys.
 // struct Key {
-//     reference_time: DateTime<Utc>,
-//     ensemble_member: EnsembleMember, // Our own enum?
+//     reference_datetime: DateTime<Utc>,
+//     ensemble_member: String, // TODO: Convert to info from GDAL GRIB tables
 //     forecast_step: TimeDelta,
-//     parameter: hypergrib_idx_parser::Parameter,
-//     vertical_level: VerticalLevel, // From gribberish?
-//     // Also for consideration:
-//     // provider: Provider,  // e.g. NOAA, UKMetOffice, ECMWF, etc.
-//     // nwp_model: NWPModel,  // e.g. GFS, GEFS, UKV, etc.
-//     // or maybe combine `provider` and `nwp_model` into a single Enum e.g. UKMO_UKV, etc?
+//     parameter: String, //  TODO: Convert to info from GDAL GRIB tables
+//     vertical_level: String, // TODO: Convert to info from GDAL GRIB tables
 // }
 
 /// The location of a GRIB message.
@@ -38,25 +26,67 @@ struct MessageLocation {
     // - other metadata?
 }
 
-// TODO: Implement `struct CoordLabels` and `SortedVecSet<T>`:
-// struct SortedVecSet<T>(Vec<T>);
-//
-// impl<T> SortedVecSet<T> {
-//   /// Insert only if a duplicate doesn't exist. Sorts after insertion.
-//   fn insert(t: T) -> Result<DuplicateExists>;
-// }
-//
-// struct NwpCoordLabels {
-//   // We're using `SortedVecSet` (not `BTreeSet`) because the most performance-sensitive
-//   // part of the process is looking up a coord label given an integer index.
-//   // And the only way to do that with a `BTreeSet` is to first iterate over the elements.
-//   init_time: SortedVecSet<Datetime>,
-//   ensemble_member: SortedVecSet<u16>,
-//   forecast_step: SortedVecSet<Timedelta>,
-//   nwp_variable: SortedVecSet<Variable>,
-//   vertical_level: SortedVecSet<VerticalLevel>,
-// }
-//
+struct CoordLabelsBuilder {
+    grib_store: Arc<dyn ObjectStore>,
+    grib_base_path: object_store::path::Path,
+    idx_store: Arc<dyn ObjectStore>,
+    idx_base_path: object_store::path::Path,
+    reference_datetime: HashSet<DateTime<Utc>>,
+    ensemble_member: HashSet<String>,
+    forecast_step: HashSet<TimeDelta>,
+    parameter: HashSet<String>,
+    vertical_level: HashSet<String>,
+}
+
+impl CoordLabelsBuilder {
+    fn new(
+        grib_store: Arc<dyn ObjectStore>,
+        grib_base_path: object_store::path::Path,
+        idx_store: Arc<dyn ObjectStore>,
+        idx_base_path: object_store::path::Path,
+    ) -> Self {
+        Self {
+            grib_store,
+            grib_base_path,
+            idx_store,
+            idx_base_path,
+            reference_datetime: HashSet::new(),
+            ensemble_member: HashSet::new(),
+            forecast_step: HashSet::new(),
+            parameter: HashSet::new(),
+            vertical_level: HashSet::new(),
+        }
+    }
+
+    fn build(self) -> CoordLabels {
+        CoordLabels {
+            reference_datetime: set_to_sorted_vec(self.reference_datetime),
+            ensemble_member: set_to_sorted_vec(self.ensemble_member),
+            forecast_step: set_to_sorted_vec(self.forecast_step),
+            parameter: set_to_sorted_vec(self.parameter),
+            vertical_level: set_to_sorted_vec(self.vertical_level),
+        }
+    }
+}
+
+fn set_to_sorted_vec<T: Ord>(set: HashSet<T>) -> Vec<T> {
+    let mut v: Vec<T> = set.into_iter().collect();
+    v.sort();
+    v
+}
+
+/// Each `vec` is sorted and contains unique values.
+struct CoordLabels {
+    reference_datetime: Vec<DateTime<Utc>>,
+    ensemble_member: Vec<String>,
+    forecast_step: Vec<TimeDelta>,
+    parameter: Vec<String>,
+    vertical_level: Vec<String>,
+}
+
+trait GetCoordLabels {
+    async fn get_coord_labels(self) -> anyhow::Result<CoordLabels>;
+}
 
 trait ToIdxLocation {
     // TODO: Pass in a struct instead of individual fields?
@@ -67,4 +97,19 @@ trait ToIdxLocation {
         step: TimeDelta,
         ens_member: Option<u32>,
     ) -> object_store::path::Path;
+}
+
+/// Filter a stream of `object_store::Result<object_store::ObjectMeta>` to select only the items
+/// which have a file extension which matches `extension`.
+pub(crate) fn filter_by_ext<'a>(
+    stream: impl Stream<Item = object_store::Result<ObjectMeta>> + 'a,
+    extension: &'static str,
+) -> impl Stream<Item = object_store::Result<ObjectMeta>> + 'a {
+    stream.filter(move |list_result| {
+        future::ready(list_result.as_ref().is_ok_and(|meta| {
+            meta.location
+                .extension()
+                .is_some_and(|ext| ext == extension)
+        }))
+    })
 }

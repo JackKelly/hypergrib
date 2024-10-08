@@ -5,6 +5,8 @@ use std::fs;
 use std::future;
 use url::Url;
 
+use crate::filter_by_ext;
+
 /// Create a manifest from GRIB `.idx` files.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -54,19 +56,4 @@ pub async fn main() {
             break;
         }
     }
-}
-
-/// Filter a stream of `object_store::Result<object_store::ObjectMeta>` to select only the items
-/// which have a file extension which matches `extension`.
-fn filter_by_ext<'a>(
-    stream: impl Stream<Item = object_store::Result<ObjectMeta>> + 'a,
-    extension: &'static str,
-) -> impl Stream<Item = object_store::Result<ObjectMeta>> + 'a {
-    stream.filter(move |list_result| {
-        future::ready(list_result.as_ref().is_ok_and(|meta| {
-            meta.location
-                .extension()
-                .is_some_and(|ext| ext == extension)
-        }))
-    })
 }

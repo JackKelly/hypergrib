@@ -1,7 +1,13 @@
 //! NOAA's Global Ensemble Forecast System (GEFS).
 //! https://registry.opendata.aws/noaa-gefs
 
+use std::sync::Arc;
+
 use chrono::{TimeDelta, Timelike};
+use futures_util::StreamExt;
+use object_store::ObjectStore;
+
+use crate::filter_by_ext;
 
 struct Gefs;
 
@@ -44,6 +50,55 @@ impl crate::ToIdxLocation for Gefs {
             .into(),
         );
         object_store::path::Path::from_iter(parts)
+    }
+}
+
+struct GefsCoordLabelsBuilder {
+    coord_labels_builder: crate::CoordLabelsBuilder,
+}
+
+impl GefsCoordLabelsBuilder {
+    fn new(
+        grib_store: Arc<dyn ObjectStore>,
+        grib_base_path: object_store::path::Path,
+        idx_store: Arc<dyn ObjectStore>,
+        idx_base_path: object_store::path::Path,
+    ) -> Self {
+        Self {
+            coord_labels_builder: crate::CoordLabelsBuilder::new(
+                grib_store,
+                grib_base_path,
+                idx_store,
+                idx_base_path,
+            ),
+        }
+    }
+
+    async fn extract_from_idx_paths(&mut self) -> anyhow::Result<()> {
+        // Get an `async` stream of Metadata objects:
+        let mut list_stream = self
+            .coord_labels_builder
+            .idx_store
+            .list(Some(&self.coord_labels_builder.idx_base_path));
+
+        let mut list_stream = filter_by_ext(list_stream, "idx");
+
+        // Loop through each .idx filename:
+        while let Some(meta) = list_stream.next().await.transpose().unwrap() {
+            self.coord_labels_builder
+                .reference_datetime
+                .insert(extract_reference_datetime(&meta.location));
+        }
+        Ok(())
+    }
+}
+
+impl crate::GetCoordLabels for GefsCoordLabelsBuilder {
+    async fn get_coord_labels(mut self) -> anyhow::Result<crate::CoordLabels> {
+        self.extract_from_idx_paths().await?;
+        // TODO: self.extract_from_gribs().await?; // Maybe do concurrently with
+        // extract_from_idx_paths?
+        Ok(self.coord_labels_builder.build())
     }
 }
 
