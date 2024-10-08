@@ -3,7 +3,7 @@
 The intention is that end-users wouldn't have to do this step. Instead an organisation (e.g. Open Climate Fix and/or dynamical.org) would perform this step and publish the metadata.
 
 ### Planned `hypergrib` MVP features:
-- [ ] Implement parsing of `.idx` files into `gribberish` data structures (starting with the GEFS NWP) https://github.com/JackKelly/hypergrib/issues/11
+- [ ] Parse GRIB2 `.idx` files (starting with the GEFS NWP) https://github.com/JackKelly/hypergrib/issues/11
 - [ ] Get coordinate labels for init datetimes, vertical levels, parameters, steps, and ensemble members:
     - Get a list of init datetimes, ensemble members, and steps by getting a listing of all `.idx` filenames. Record if/when the coordinates change. The GEFS filenames include all this information. Although this will be a dataset-specific feature. Other datasets might not include all this info in the filenames.
     - Get a list of parameters and vertical levels by reading the first day's worth of `.idx` files, and read the last day's worth of `.idx` files. Beware that, for example, the GEFS analysis step doesn't include the same parameters as the forecast steps! If the first and last days have the same coordinate labels then assume that the coordinate labels stay the same across the entire dataset. If the coords in the first and last days differ then begin an "over-eager" binary search of the `.idx` files to find when coordinates change (e.g. when the NWP is upgraded an more ensemble members are added - see https://github.com/JackKelly/hypergrib/discussions/15). Submit many GET requests at once. The coords might change more than once.
