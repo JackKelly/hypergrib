@@ -2,7 +2,7 @@
 
 The intention is that end-users wouldn't have to do this step. Instead an organisation (e.g. Open Climate Fix and/or dynamical.org) would perform this step and publish the metadata.
 
-### Planned `hypergrib` MVP features:
+### Planned `hypergrib` MVP features (for getting coordinate labels)
 - [ ] Get a list of init datetimes, ensemble members, and steps by getting a listing of all `.idx` filenames. The GEFS filenames include all this information. Although this will be a dataset-specific feature. Other datasets might not include all this info in the filenames. Decode the step to a `TimeDelta`.
 - [ ] Record if/when the number of ensemble members and/or steps changes.
 - [ ] Get a list of parameters and vertical levels by reading the first day's worth of `.idx` files, and read the last day's worth of `.idx` files. Beware that, for example, the GEFS analysis step doesn't include the same parameters as the forecast steps! (Which is why it's important to read an entire day's worth of data). If the first and last days have the same coordinate labels then assume that the coordinate labels stay the same across the entire dataset. If the coords in the first and last days differ then begin an "over-eager" binary search of the `.idx` files to find when coordinates change (e.g. when the NWP is upgraded an more ensemble members are added - see https://github.com/JackKelly/hypergrib/discussions/15). Submit many GET requests at once. The coords might change more than once. For the MVP:
@@ -12,6 +12,7 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
 - [ ] Record the dimension names, array shape, and coordinates in a JSON file. Also record when the coordinates change. Changes in horizontal resolution probably have to be loaded as different xarray datasets (see https://github.com/JackKelly/hypergrib/discussions/15 and https://github.com/JackKelly/hypergrib/discussions/17).
 
 ### Features beyond the MVP
+- [ ] Implement an efficient way to _update_ the `hypergrib` metadata (e.g. when NODD publishes new forecasts).
 - [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order). We could use [the GRIB2 tables recorded as .csv files in gdal]([url](https://github.com/OSGeo/gdal/tree/master/frmts/grib/degrib/data)). Perhaps this could be implemented in Python.
     - [ ] Also need to decode `.idx` parameter strings like this (from HRRR): `var discipline=0 center=7 local_table=1 parmcat=16 parm=201`
 
