@@ -7,15 +7,15 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
 - [ ] Record if/when the number of ensemble members and/or steps changes.
 - [ ] Get a list of parameters and vertical levels by reading the first day's worth of `.idx` files, and read the last day's worth of `.idx` files. Beware that, for example, the GEFS analysis step doesn't include the same parameters as the forecast steps! (Which is why it's important to read an entire day's worth of data). If the first and last days have the same coordinate labels then assume that the coordinate labels stay the same across the entire dataset. If the coords in the first and last days differ then begin an "over-eager" binary search of the `.idx` files to find when coordinates change (e.g. when the NWP is upgraded an more ensemble members are added - see https://github.com/JackKelly/hypergrib/discussions/15). Submit many GET requests at once. The coords might change more than once. For the MVP:
     - Don't decode the parameter abbreviation string or the vertical level string. Keep these as strings (even though this won't put the vertical levels in the correct order). The coordinate labels will be these strings.
-    - Don't do anything with the step in the `.idx` file. It's easier to get the `step` from the filename! (for GEFS, at least!)
+    - Ignore step in the `.idx` file. It's easier to get the `step` from the filename! (for GEFS, at least!)
 - [ ] Get the horizontal spatial coordinates: Read a day's worth of GRIB files at the start of the dataset, and a day's worth at the end of the dataset. If the start and end of the dataset have the same coordinates then we're done; let's assume the spatial coords stay the same across the dataset. Otherwise conduct a kind of over-eager binary search to find exactly where the horizontal spatial coords change. The coords might change more than once. If the scan of `.idx` files found that the ensemble members and/or vertical levels changed then there's a good chance that the spatial coords also changed at the same times.
 - [ ] Record the dimension names, array shape, and coordinates in a JSON file. Also record when the coordinates change. Changes in horizontal resolution probably have to be loaded as different xarray datasets (see https://github.com/JackKelly/hypergrib/discussions/15 and https://github.com/JackKelly/hypergrib/discussions/17).
 
 ### Features beyond the MVP
 - [ ] Implement an efficient way to _update_ the `hypergrib` metadata (e.g. when NODD publishes new forecasts).
-- [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order).
-    - [ ] First, it might be good to start a new little project which provides all GRIB code tables in a machine readable form. See: https://github.com/JackKelly/hypergrib/issues/18
+- [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order), possibly using the [GRIB tables represented as `.csv` files in GDAL](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data) (confusingly, the README for that directory is [here](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT)). See https://github.com/JackKelly/hypergrib/issues/18
     - [ ] Also need to decode `.idx` parameter strings like this (from HRRR): `var discipline=0 center=7 local_table=1 parmcat=16 parm=201`
+- [ ] Open other GRIB datasets. (If we have to parse the step from the body of `.idx` files then consider using [`nom`](https://crates.io/crates/nom)).
 
 ## Step 2: Load the metadata and load data
 
