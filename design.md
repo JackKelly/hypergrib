@@ -13,7 +13,8 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
 
 ### Features beyond the MVP
 - [ ] Implement an efficient way to _update_ the `hypergrib` metadata (e.g. when NODD publishes new forecasts).
-- [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order). We could use [the GRIB2 tables recorded as .csv files in gdal]([url](https://github.com/OSGeo/gdal/tree/master/frmts/grib/degrib/data)). Perhaps this could be implemented in Python.
+- [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order).
+    - [ ] First, it might be good to start a new little project which provides all GRIB code tables in a machine readable form. See: https://github.com/JackKelly/hypergrib/issues/18
     - [ ] Also need to decode `.idx` parameter strings like this (from HRRR): `var discipline=0 center=7 local_table=1 parmcat=16 parm=201`
 
 ## Step 2: Load the metadata and load data
