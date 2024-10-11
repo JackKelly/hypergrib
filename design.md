@@ -13,7 +13,7 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
 
 ### Features beyond the MVP
 - [ ] Implement an efficient way to _update_ the `hypergrib` metadata (e.g. when NODD publishes new forecasts).
-- [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order), possibly using the [GRIB tables represented as `.csv` files in GDAL](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data) (confusingly, the README for that directory is [here](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT)). See https://github.com/JackKelly/hypergrib/issues/18
+- [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order), possibly using the [GRIB tables represented as `.csv` files in GDAL](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data) (See [the README for that directory](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT), and [this gribberish discussion](https://github.com/mpiannucci/gribberish/issues/41#issuecomment-2404916278), and [my post to the gdal-dev mailing list](https://lists.osgeo.org/pipermail/gdal-dev/2024-October/059612.html) about splitting the CSVs and/or me copying the CSVs.
     - [ ] Also need to decode `.idx` parameter strings like this (from HRRR): `var discipline=0 center=7 local_table=1 parmcat=16 parm=201`
 - [ ] Open other GRIB datasets. (If we have to parse the step from the body of `.idx` files then consider using [`nom`](https://crates.io/crates/nom)).
 
