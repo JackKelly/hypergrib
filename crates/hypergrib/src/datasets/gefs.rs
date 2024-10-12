@@ -3,7 +3,7 @@
 
 use std::{error::Error, fmt::Display, sync::Arc};
 
-use chrono::{DateTime, NaiveDate, TimeDelta, Timelike, Utc};
+use chrono::{DateTime, NaiveDate, TimeDelta, TimeZone, Timelike, Utc};
 use futures_util::StreamExt;
 use object_store::ObjectStore;
 
@@ -122,6 +122,58 @@ impl Display for GefsIdxError {
 }
 
 impl Error for GefsIdxError {}
+
+#[allow(non_camel_case_types)]
+enum GefsIdxPathVersion {
+    /// GEFS model version 11?
+    ///
+    /// Paths of the form `gefs.20170101/00/gec00.t00z.pgrb2aanl.idx`
+    V1,
+
+    /// GEFS model version 11?
+    ///
+    /// Paths of the form `gefs.20180727/00/pgrb2[a|b]/gec00.t00z.pgrb2aanl.idx`
+    V2,
+
+    /// A union of the paths in the previous and subsequent versions! i.e. contains
+    /// paths of the form `gefs.20180727/00/pgrb2[a|b]/gec00.t00z.pgrb2aanl.idx` and
+    /// paths of the form `gefs.20200923/00/[atmos|chem|wave]/etc...`
+    V3,
+
+    /// GEFS model version v12?
+    ///
+    /// Paths of the forms:
+    ///              This character-----v---v---v is repeated here-----v-v-v
+    ///              These characters----vv--vv--vvv are repeated here---------v-vv-v
+    /// - `gefs.20241008/00/atmos/pgrb2[ap5|bp5|sp25]/geavg.t00z.pgrb2[a|b|s].0p[25|50].f000.idx`
+    /// - `gefs.20241008/00/atmos/[bufr|init]/`: Ignore! No GRIB data.
+    /// - `gefs.20241008/00/chem/[pgrb2ap25|pgrb2ap5]/gefs.chem.t00z.a2d_0p25.f000.grib2.idx`
+    /// - `gefs.20241008/00/wave/`
+    ///     - `gridded/gefs.wave.t00z.c00.global.0p25.f000.grib2.idx`
+    ///     - `station`: Ignore! No GRIB data!
+    V4,
+}
+
+impl GefsIdxPathVersion {
+    fn start_datetime(&self) -> DateTime<Utc> {
+        match *self {
+            Self::V1 => Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0),
+            Self::V2 => Utc.with_ymd_and_hms(2018, 7, 27, 0, 0, 0),
+            Self::V3 => Utc.with_ymd_and_hms(2020, 9, 23, 0, 0, 0),
+            Self::V4 => Utc.with_ymd_and_hms(2020, 9, 23, 12, 0, 0),
+        }
+        .unwrap()
+    }
+
+    fn end_datetime(&self) -> DateTime<Utc> {
+        match *self {
+            Self::V1 => Utc.with_ymd_and_hms(2018, 7, 26, 18, 0, 0).unwrap(),
+            Self::V2 => Utc.with_ymd_and_hms(2020, 9, 22, 18, 0, 0).unwrap(),
+            Self::V3 => Utc.with_ymd_and_hms(2020, 9, 23, 6, 0, 0).unwrap(),
+            Self::V4 => <DateTime<Utc>>::MAX_UTC,
+        }
+    }
+}
 
 // The path of the `.idx` file is structured like this:
 //     noaa-gefs-pds/
