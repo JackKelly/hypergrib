@@ -124,7 +124,7 @@ impl Display for GefsIdxError {
 
 impl Error for GefsIdxError {}
 
-/// The was the GEFS data is structured has changed over time.
+/// The structure of the GEFS paths has changed over time.
 /// We manually identified the boundaries from the following information sources:
 /// - [NOAA GEFS page](https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gefs.php)
 ///   which includes the model version numbers.
