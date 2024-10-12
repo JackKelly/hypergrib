@@ -337,20 +337,6 @@ mod tests {
         forecast_hour: TimeDelta,
     }
 
-    impl TryFrom<GfsTest> for GefsIdxPath<'_> {
-        type Error = GefsIdxError;
-
-        fn try_from(gefs_test_struct: GfsTest) -> Result<Self, Self::Error> {
-            let path = object_store::path::Path::try_from(gefs_test_struct.path.as_str()).expect(
-                &format!(
-                    "Failed to parse path string into an object_store::path::Path! {}",
-                    gefs_test_struct.path
-                ),
-            );
-            GefsIdxPath::try_from(&path)
-        }
-    }
-
     fn deserialize_reference_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -401,6 +387,8 @@ mod tests {
         GEFS_TEST_DATA
             .get_or_init(move || load_gefs_test_paths_csv())
             .iter()
+            // TODO: Refactor the code that's duplicated between this function and
+            // test_extract_forecast_step.
             .for_each(|gefs_test_struct| {
                 let path = object_store::path::Path::try_from(gefs_test_struct.path.as_str())
                     .expect(&format!(
@@ -427,11 +415,22 @@ mod tests {
             .get_or_init(move || load_gefs_test_paths_csv())
             .iter()
             .for_each(|gefs_test_struct| {
+                let path = object_store::path::Path::try_from(gefs_test_struct.path.as_str())
+                    .expect(&format!(
+                        "Failed to parse path string into an object_store::path::Path! {}",
+                        gefs_test_struct.path
+                    ));
+                let step = GefsIdxPath::try_from(&path)
+                    .unwrap()
+                    .extract_forecast_step()
+                    .expect(&format!(
+                        "Failed to extract forecast step from {}",
+                        gefs_test_struct.path
+                    ));
                 assert_eq!(
-                    GefsVersion::try_from_reference_datetime(&gefs_test_struct.reference_datetime)
-                        .unwrap(),
-                    &gefs_test_struct.gefs_version_enum_variant,
-                )
+                    step, gefs_test_struct.forecast_hour,
+                    "Incorrect forecast step when parsing idx path '{path}'"
+                );
             });
     }
 
