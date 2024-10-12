@@ -92,6 +92,9 @@ impl GefsCoordLabelsBuilder {
             self.coord_labels_builder
                 .reference_datetime
                 .insert(gefs_idx_path.extract_reference_datetime()?);
+            self.coord_labels_builder
+                .forecast_step
+                .insert(gefs_idx_path.extract_forecast_step()?);
         }
         Ok(())
     }
@@ -285,6 +288,23 @@ impl GefsIdxPath<'_> {
             .into()),
         }
     }
+
+    fn extract_forecast_step(&self) -> anyhow::Result<TimeDelta> {
+        let n_parts = self.parts.len();
+        let filename = &self.parts[n_parts - 1];
+        let filename_len = filename.as_ref().len();
+        // The forecast step is always in the last 8 to 4 chars e.g. "f330.idx".
+        let start_i = filename_len - 7;
+        let end_i = filename_len - 4;
+        let step_str = &filename.as_ref()[start_i..end_i];
+        let timedelta = if step_str == "anl" {
+            TimeDelta::zero()
+        } else {
+            let forecast_hours: i64 = step_str.parse()?;
+            TimeDelta::hours(forecast_hours)
+        };
+        Ok(timedelta)
+    }
 }
 
 fn ymdh_to_datetime(year: i32, month: u32, day: u32, hour: u32) -> DateTime<Utc> {
@@ -315,6 +335,20 @@ mod tests {
         ensemble_member: String,
         #[serde(deserialize_with = "deserialize_forecast_hour")]
         forecast_hour: TimeDelta,
+    }
+
+    impl TryFrom<GfsTest> for GefsIdxPath<'_> {
+        type Error = GefsIdxError;
+
+        fn try_from(gefs_test_struct: GfsTest) -> Result<Self, Self::Error> {
+            let path = object_store::path::Path::try_from(gefs_test_struct.path.as_str()).expect(
+                &format!(
+                    "Failed to parse path string into an object_store::path::Path! {}",
+                    gefs_test_struct.path
+                ),
+            );
+            GefsIdxPath::try_from(&path)
+        }
     }
 
     fn deserialize_reference_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
@@ -384,6 +418,20 @@ mod tests {
                     dt, gefs_test_struct.reference_datetime,
                     "Incorrect reference datetime when parsing idx path '{path}'"
                 );
+            });
+    }
+
+    #[test]
+    fn test_extract_forecast_step() {
+        GEFS_TEST_DATA
+            .get_or_init(move || load_gefs_test_paths_csv())
+            .iter()
+            .for_each(|gefs_test_struct| {
+                assert_eq!(
+                    GefsVersion::try_from_reference_datetime(&gefs_test_struct.reference_datetime)
+                        .unwrap(),
+                    &gefs_test_struct.gefs_version_enum_variant,
+                )
             });
     }
 

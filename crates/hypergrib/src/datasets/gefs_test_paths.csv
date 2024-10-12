@@ -1,5 +1,5 @@
 path,gefs_version_enum_variant,reference_datetime,ensemble_member,forecast_hour
-noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2aanl.idx,0,20170101T00,gec00,0
+noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb3aanl.idx,0,20170101T00,gec00,0
 noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2bf330.idx,0,20170101T00,gec00,330
 noaa-gefs-pds/gefs.20170101/00/gep20.t00z.pgrb2bf384.idx,0,20170101T00,gep20,384
 noaa-gefs-pds/gefs.20180727/00/pgrb2a/gec00.t00z.pgrb2aanl.idx,1,20180727T00,gec00,0
