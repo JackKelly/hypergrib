@@ -20,7 +20,7 @@ impl crate::ToIdxPath for Gefs {
         forecast_step: &TimeDelta,
         ensemble_member: Option<&str>,
     ) -> object_store::path::Path {
-        // TODO: The code below only works for "old" GEFS paths. But GEFS switched to new,
+        // TODO: The code below only works for "old" (GefsVersion::V1) GEFS paths. But GEFS switched to new,
         // more complicated paths at some point. For the hypergrib MVP, change this function to
         // only handle the new paths. Then implement both "old" and "new" and switch on the
         // `reference_datetime` to decide whether to use "old" or "new" format. And, for the "new"
@@ -90,7 +90,7 @@ impl GefsCoordLabelsBuilder {
             let gefs_idx_path = GefsIdxPath::try_from(&meta.location)?;
             self.coord_labels_builder
                 .reference_datetime
-                .insert(gefs_idx_path.reference_datetime()?);
+                .insert(gefs_idx_path.extract_reference_datetime()?);
         }
         Ok(())
     }
@@ -123,8 +123,21 @@ impl Display for GefsIdxError {
 
 impl Error for GefsIdxError {}
 
+/// The was the GEFS data is structured has changed over time.
+/// We manually identified the boundaries from the following information sources:
+/// - [NOAA GEFS page](https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gefs.php)
+///   which includes the model version numbers.
+/// - [NCEP Products Inventory](https://www.nco.ncep.noaa.gov/pmb/products/gens/) which describes
+///   how the filenames are formatted for the latest version of the model.
+/// - Our main source of information was the [GEFS AWS S3 bucket](https://noaa-gefs-pds.s3.amazonaws.com/index.html).
+///   Note that all the paths below are "real" paths taken from the S3 bucket.
+///
+/// Please beware that these `GefsVersion` numbers are entirely made up by us. They are not the
+/// GEFS NWP model versions. Although there should be a simple mapping from our `GefsVersion`
+/// numbers to the GEFS model version.
+#[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
-enum GefsIdxPathVersion {
+enum GefsVersion {
     /// GEFS model version 11?
     ///
     /// Paths of the form `gefs.20170101/00/gec00.t00z.pgrb2aanl.idx`
@@ -135,9 +148,17 @@ enum GefsIdxPathVersion {
     /// Paths of the form `gefs.20180727/00/pgrb2[a|b]/gec00.t00z.pgrb2aanl.idx`
     V2,
 
-    /// A union of the paths in the previous and subsequent versions! i.e. contains
-    /// paths of the form `gefs.20180727/00/pgrb2[a|b]/gec00.t00z.pgrb2aanl.idx` and
-    /// paths of the form `gefs.20200923/00/[atmos|chem|wave]/etc...`
+    /// A union of the paths in V2 and V4 for just two runs! It looks like NOAA ran V2 and V3
+    /// for two initialisations 2020-09-23T00 and T06. But the folders for these two
+    /// init datetimes contain fewer files than in the equivalent "proper" V4 folders: e.g.:
+    /// - gefs.20200923/00/atmos/pgrb2ap5 (V3) =  9,306 entries
+    /// - gefs.20200924/00/atmos/pgrb2ap5 (V4) = 11,419 entries
+    /// - gefs.20210101/00/atmos/pgrb2ap5 (V4) = 11,946 entries
+    /// - gefs.20241010/00/atmos/pgrb2ap5 (V4) = 11,947 entries
+    ///
+    /// So it may be safest to ignore the "V4-like" folders in the folders for these
+    /// two init datetimes and just use the "V2-like" folders for these two init times.
+    /// i.e. just tread V3 as if it were V2.
     V3,
 
     /// GEFS model version v12?
@@ -154,44 +175,47 @@ enum GefsIdxPathVersion {
     V4,
 }
 
-impl GefsIdxPathVersion {
-    fn start_datetime(&self) -> DateTime<Utc> {
+impl GefsVersion {
+    const N_GFS_VERSIONS: usize = 4;
+    const ALL_GEFS_VERSIONS: [Self; Self::N_GFS_VERSIONS] =
+        [Self::V1, Self::V2, Self::V3, Self::V4];
+
+    /// This is the reference datetime at which this version becomes active. Each version lasts
+    /// until the next version's start_reference_datetime minus 6 hours.
+    fn start_reference_datetime(&self) -> DateTime<Utc> {
         match *self {
-            Self::V1 => Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0),
-            Self::V2 => Utc.with_ymd_and_hms(2018, 7, 27, 0, 0, 0),
-            Self::V3 => Utc.with_ymd_and_hms(2020, 9, 23, 0, 0, 0),
-            Self::V4 => Utc.with_ymd_and_hms(2020, 9, 23, 12, 0, 0),
+            Self::V1 => ymdh_to_datetime(2017, 1, 1, 0),
+            Self::V2 => ymdh_to_datetime(2018, 7, 27, 0),
+            Self::V3 => ymdh_to_datetime(2020, 9, 23, 0),
+            Self::V4 => ymdh_to_datetime(2020, 9, 23, 12),
         }
-        .unwrap()
     }
 
-    fn end_datetime(&self) -> DateTime<Utc> {
-        match *self {
-            Self::V1 => Utc.with_ymd_and_hms(2018, 7, 26, 18, 0, 0).unwrap(),
-            Self::V2 => Utc.with_ymd_and_hms(2020, 9, 22, 18, 0, 0).unwrap(),
-            Self::V3 => Utc.with_ymd_and_hms(2020, 9, 23, 6, 0, 0).unwrap(),
-            Self::V4 => <DateTime<Utc>>::MAX_UTC,
+    fn try_from_reference_datetime(
+        query_datetime: &DateTime<Utc>,
+    ) -> Result<&'static Self, BeforeStartOfDatasetError> {
+        for i in 0..Self::N_GFS_VERSIONS - 1 {
+            let this_gfs_version = &Self::ALL_GEFS_VERSIONS[i];
+            let next_gfs_version = &Self::ALL_GEFS_VERSIONS[i + 1];
+            if *query_datetime >= this_gfs_version.start_reference_datetime()
+                && *query_datetime < next_gfs_version.start_reference_datetime()
+            {
+                return Ok(this_gfs_version);
+            }
+        }
+        let last_gfs_version = &Self::ALL_GEFS_VERSIONS[Self::N_GFS_VERSIONS - 1];
+        if *query_datetime >= last_gfs_version.start_reference_datetime() {
+            Ok(last_gfs_version)
+        } else {
+            // The `query_datetime` is before the start of the dataset!
+            Err(BeforeStartOfDatasetError)
         }
     }
 }
 
-// The path of the `.idx` file is structured like this:
-//     noaa-gefs-pds/
-//     gefs.<YYYYMMDD>/
-//     <HH>/
-//     <atmos | chem | wave>/  # Only in newer forecasts
-//     <bufr | init | pgrb2ap5 | pgrb2bp5 | pgrb2sp25>/  # Only in newer forecasts
-//     gep<ensemble member>.t<HH>z.pgrb2af<step>
-// For example:
-// - `noaa-gefs-pds/gefs.20170101/00/`
-//     - `gec00.t00z.pgrb2aanl.idx`
-//     - `gec00.t00z.pgrb2bf330.idx`
-//     - `gep20.t00z.pgrb2bf384.idx`
-// - `noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/`
-//     - `geavg.t00z.pgrb2a.0p50.f000.idx`
-//     - `geavg.t00z.pgrb2a.0p50.f840.idx`
-//     - `gespr.t00z.pgrb2a.0p50.f840.idx`
-//     - `gec00.t00z.pgrb2a.0p50.f000.idx`
+#[derive(Debug)]
+struct BeforeStartOfDatasetError;
+
 struct GefsIdxPath<'a> {
     path: &'a object_store::path::Path,
     parts: Vec<object_store::path::PathPart<'a>>,
@@ -239,7 +263,7 @@ impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxPath<'a> {
 }
 
 impl GefsIdxPath<'_> {
-    fn reference_datetime(&self) -> anyhow::Result<DateTime<Utc>> {
+    fn extract_reference_datetime(&self) -> anyhow::Result<DateTime<Utc>> {
         let date = NaiveDate::parse_from_str(self.parts[1].as_ref(), "gefs.%Y%m%d")?;
         let hour: u32 = self.parts[2].as_ref().parse()?;
         match date.and_hms_opt(hour, 0, 0) {
@@ -253,9 +277,15 @@ impl GefsIdxPath<'_> {
     }
 }
 
+fn ymdh_to_datetime(year: i32, month: u32, day: u32, hour: u32) -> DateTime<Utc> {
+    match Utc.with_ymd_and_hms(year, month, day, hour, 0, 0) {
+        chrono::offset::LocalResult::Single(dt) => dt,
+        _ => panic!("Invalid datetime! {year}-{month}-{day}T{hour}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use chrono::{NaiveDateTime, TimeZone};
 
     use crate::ToIdxPath;
 
@@ -274,13 +304,13 @@ mod tests {
     #[test]
     fn test_idx_path_to_reference_datetime() {
         [
-            Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
-            Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
-            Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
-            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
-            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
-            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
-            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
+            ymdh_to_datetime(2017, 1, 1, 0),
+            ymdh_to_datetime(2017, 1, 1, 0),
+            ymdh_to_datetime(2017, 1, 1, 0),
+            ymdh_to_datetime(2024, 10, 10, 0),
+            ymdh_to_datetime(2024, 10, 10, 0),
+            ymdh_to_datetime(2024, 10, 10, 0),
+            ymdh_to_datetime(2024, 10, 10, 0),
         ]
         .into_iter()
         .zip(IDX_TEST_PATHS.iter())
@@ -290,7 +320,7 @@ mod tests {
             ));
             let dt = GefsIdxPath::try_from(&path)
                 .unwrap()
-                .reference_datetime()
+                .extract_reference_datetime()
                 .expect(&format!(
                     "Failed to extract reference datetime from {path_str}"
                 ));
@@ -302,14 +332,30 @@ mod tests {
     }
 
     #[test]
+    fn test_try_from_reference_datetime() {
+        assert!(
+            GefsVersion::try_from_reference_datetime(&ymdh_to_datetime(2000, 1, 1, 0)).is_err()
+        );
+        [
+            ymdh_to_datetime(2018, 1, 1, 0),
+            ymdh_to_datetime(2018, 8, 1, 13),
+            ymdh_to_datetime(2020, 9, 23, 6),
+            ymdh_to_datetime(2025, 1, 1, 0),
+        ]
+        .iter()
+        .zip(GefsVersion::ALL_GEFS_VERSIONS.iter())
+        .for_each(|(query_dt, expected_gefs_version)| {
+            assert_eq!(
+                GefsVersion::try_from_reference_datetime(&query_dt).unwrap(),
+                expected_gefs_version
+            )
+        });
+    }
+
+    #[test]
     fn test_to_idx_path() -> anyhow::Result<()> {
         let p = Gefs::to_idx_path(
-            // Note that the string on the line below includes minutes, even though the GEFS
-            // idx files do not contain minutes. This is because `chrono::NaiveDateTime::parse_from_str`
-            // throws an error if minutes aren't present in the string :(.
-            &NaiveDateTime::parse_from_str("201701010000", "%Y%m%d%H%M")
-                .expect("parse datetime")
-                .and_utc(),
+            &ymdh_to_datetime(2017, 1, 1, 0),
             "HGT",
             "10 mb",
             &TimeDelta::hours(6),
