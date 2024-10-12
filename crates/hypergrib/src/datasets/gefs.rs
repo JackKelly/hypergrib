@@ -135,6 +135,9 @@ impl Error for GefsIdxError {}
 /// Please beware that these `GefsVersion` numbers are entirely made up by us. They are not the
 /// GEFS NWP model versions. Although there should be a simple mapping from our `GefsVersion`
 /// numbers to the GEFS model version.
+///
+/// TODO: Extract the *actual* GEFS model version numbers from the GRIB files and use those as the
+/// enum variant names.
 #[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 enum GefsVersion {
@@ -295,6 +298,7 @@ mod tests {
         "noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2aanl.idx",
         "noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2bf330.idx",
         "noaa-gefs-pds/gefs.20170101/00/gep20.t00z.pgrb2bf384.idx",
+        "noaa-gefs-pds/gefs.20180727/00/pgrb2[a|b]/gec00.t00z.pgrb2aanl.idx",
         "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/geavg.t00z.pgrb2a.0p50.f000.idx",
         "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/geavg.t00z.pgrb2a.0p50.f840.idx",
         "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/gespr.t00z.pgrb2a.0p50.f840.idx",
