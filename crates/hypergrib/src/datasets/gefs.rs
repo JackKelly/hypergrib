@@ -9,6 +9,7 @@ use object_store::ObjectStore;
 
 use crate::filter_by_ext;
 
+const BUCKET_ID: &str = "noaa-gefs-pds";
 struct Gefs;
 
 impl crate::ToIdxLocation for Gefs {
@@ -100,7 +101,7 @@ impl crate::GetCoordLabels for GefsCoordLabelsBuilder {
 
 #[derive(Debug)]
 struct GefsIdxError {
-    path: object_store::path::Path,
+    path: String,
     error: String,
 }
 
@@ -116,12 +117,23 @@ impl Display for GefsIdxError {
 
 impl Error for GefsIdxError {}
 
-// The path of the idx is like this:
-// noaa-gefs-pds/
-// gefs.<init date>/
-// <init hour>/
-// pgrb2b/
-// gep<ensemble member>.t<init hour>z.pgrb2af<step>
+// The location of the `.idx` file is structured like this:
+//     noaa-gefs-pds/
+//     gefs.<YYYYMMDD>/
+//     <HH>/
+//     <atmos | chem | wave>/  # Only in newer forecasts
+//     <bufr | init | pgrb2ap5 | pgrb2bp5 | pgrb2sp25>/  # Only in newer forecasts
+//     gep<ensemble member>.t<HH>z.pgrb2af<step>
+// For example:
+// - `noaa-gefs-pds/gefs.20170101/00/`
+//     - `gec00.t00z.pgrb2aanl.idx`
+//     - `gec00.t00z.pgrb2bf330.idx`
+//     - `gep20.t00z.pgrb2bf384.idx`
+// - `noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/`
+//     - `geavg.t00z.pgrb2a.0p50.f000.idx`
+//     - `geavg.t00z.pgrb2a.0p50.f840.idx`
+//     - `gespr.t00z.pgrb2a.0p50.f840.idx`
+//     - `gec00.t00z.pgrb2a.0p50.f000.idx`
 struct GefsIdxLocation<'a> {
     path: &'a object_store::path::Path,
     parts: Vec<object_store::path::PathPart<'a>>,
@@ -132,32 +144,38 @@ impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxLocation<'a> {
 
     fn try_from(idx_location: &'a object_store::path::Path) -> Result<Self, Self::Error> {
         let parts: Vec<_> = idx_location.parts().collect();
-        let i_start = match parts
-            .iter()
-            .position(|part| part.as_ref() == "noaa-gefs-pds")
-        {
-            Some(i) => i,
-            None => {
-                return Err(GefsIdxError {
-                    error: format!("Failed to find 'noaa-gefs-pds'"),
-                    path: idx_location.clone(),
-                })
-            }
+
+        // Helper closure:
+        let make_error = |error: String| -> Result<Self, Self::Error> {
+            Err(GefsIdxError {
+                error,
+                path: idx_location.to_string(),
+            })
         };
-        let parts = &parts[i_start..];
-        const N_PARTS_EXPECTED: usize = 5;
-        if parts.len() != N_PARTS_EXPECTED {
-            return Err(GefsIdxError {
-                error: format!(
-                    "Expected {N_PARTS_EXPECTED} parts in the path of the idx file. Found {} parts instead",
-                    parts.len()
-                    ),
-                path: idx_location.clone(),
-            });
+
+        // Sanity checks:
+        if parts[0].as_ref() != BUCKET_ID {
+            return make_error(format!("GEFS location must start with '{BUCKET_ID}'."));
         }
+
+        // Check the number of parts:
+        let n_parts = parts.len();
+        const N_PARTS_EXPECTED: [usize; 2] = [4, 6];
+        if !N_PARTS_EXPECTED.contains(&n_parts) {
+            return make_error(format!(
+                "Expected {N_PARTS_EXPECTED:?} parts in the location of the idx file. Found {n_parts} parts instead.",
+            ));
+        }
+
+        // Check that the path ends with `.idx`.
+        let last_part = &parts[n_parts - 1];
+        if !last_part.as_ref().ends_with(".idx") {
+            return make_error("The location must end with '.idx'!".to_string());
+        }
+
         Ok(Self {
             path: idx_location,
-            parts: parts.to_vec(),
+            parts,
         })
     }
 }
@@ -169,8 +187,8 @@ impl GefsIdxLocation<'_> {
         match date.and_hms_opt(hour, 0, 0) {
             Some(dt) => Ok(dt.and_utc()),
             None => Err(GefsIdxError {
-                error: format!("Invalid hour {hour} when parsing idx"),
-                path: self.path.clone(),
+                error: format!("Invalid hour {hour} when parsing location of idx"),
+                path: self.path.to_string(),
             }
             .into()),
         }
@@ -179,11 +197,51 @@ impl GefsIdxLocation<'_> {
 
 #[cfg(test)]
 mod tests {
-    use chrono::NaiveDateTime;
+    use chrono::{NaiveDateTime, TimeZone};
 
     use crate::ToIdxLocation;
 
     use super::*;
+
+    const IDX_TEST_PATHS: [&str; 7] = [
+        "noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2aanl.idx",
+        "noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2bf330.idx",
+        "noaa-gefs-pds/gefs.20170101/00/gep20.t00z.pgrb2bf384.idx",
+        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/geavg.t00z.pgrb2a.0p50.f000.idx",
+        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/geavg.t00z.pgrb2a.0p50.f840.idx",
+        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/gespr.t00z.pgrb2a.0p50.f840.idx",
+        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/gec00.t00z.pgrb2a.0p50.f000.idx",
+    ];
+
+    #[test]
+    fn test_idx_loc_to_reference_datetime() {
+        [
+            Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(2024, 10, 10, 0, 0, 0).unwrap(),
+        ]
+        .into_iter()
+        .zip(IDX_TEST_PATHS.iter())
+        .for_each(|(expected_datetime, path_str)| {
+            let path = object_store::path::Path::try_from(*path_str).expect(&format!(
+                "Failed to parse path string into an object_store::path::Path! {path_str}"
+            ));
+            let dt = GefsIdxLocation::try_from(&path)
+                .unwrap()
+                .reference_datetime()
+                .expect(&format!(
+                    "Failed to extract reference datetime from {path_str}"
+                ));
+            assert_eq!(
+                dt, expected_datetime,
+                "Incorrect reference datetime when parsing idx location '{path}'"
+            );
+        });
+    }
 
     #[test]
     fn test_to_idx_location() -> anyhow::Result<()> {
