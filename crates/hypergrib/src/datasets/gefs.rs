@@ -13,32 +13,27 @@ struct Gefs;
 
 impl crate::ToIdxLocation for Gefs {
     fn to_idx_location(
-        init_datetime: chrono::DateTime<chrono::Utc>,
-        _product: String,
-        _level: String,
-        step: TimeDelta,
-        ens_member: Option<u32>,
+        reference_datetime: &chrono::DateTime<chrono::Utc>,
+        _parameter: &str,
+        _vertical_level: &str,
+        forecast_step: &TimeDelta,
+        ensemble_member: Option<&str>,
     ) -> object_store::path::Path {
         let mut parts = Vec::<object_store::path::PathPart>::with_capacity(3);
-        let init_hour = format!("{:02}", init_datetime.hour());
+        let init_hour = format!("{:02}", reference_datetime.hour());
 
         // First part of the Path:
-        parts.push(init_datetime.format("gefs.%Y%m%d").to_string().into());
+        parts.push(reference_datetime.format("gefs.%Y%m%d").to_string().into());
 
         // Second part of the Path:
         parts.push(init_hour.clone().into());
 
         // Third part of the Path:
-        let ens_member = ens_member.unwrap();
-        let ensemble_member = if ens_member == 0 {
-            "gec00".to_string()
-        } else {
-            format!("gef{:02}", ens_member)
-        };
-        let forecast_step = if step == TimeDelta::zero() {
+        let ensemble_member = ensemble_member.expect("GEFS requires the ensemble member!");
+        let forecast_step = if *forecast_step == TimeDelta::zero() {
             "anl".to_string()
         } else {
-            format!("f{:03}", step.num_hours())
+            format!("f{:03}", forecast_step.num_hours())
         };
         parts.push(
             format!(
@@ -76,7 +71,7 @@ impl GefsCoordLabelsBuilder {
 
     async fn extract_from_idx_paths(&mut self) -> anyhow::Result<()> {
         // Get an `async` stream of Metadata objects:
-        let mut list_stream = self
+        let list_stream = self
             .coord_labels_builder
             .idx_store
             .list(Some(&self.coord_labels_builder.idx_base_path));
@@ -108,6 +103,7 @@ struct GefsIdxError {
     path: object_store::path::Path,
     error: String,
 }
+
 impl Display for GefsIdxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -117,6 +113,7 @@ impl Display for GefsIdxError {
         )
     }
 }
+
 impl Error for GefsIdxError {}
 
 // The path of the idx is like this:
@@ -194,13 +191,13 @@ mod tests {
             // Note that the string on the line below includes minutes, even though the GEFS
             // idx files do not contain minutes. This is because `chrono::NaiveDateTime::parse_from_str`
             // throws an error if minutes aren't present in the string :(.
-            NaiveDateTime::parse_from_str("201701010000", "%Y%m%d%H%M")
+            &NaiveDateTime::parse_from_str("201701010000", "%Y%m%d%H%M")
                 .expect("parse datetime")
                 .and_utc(),
-            "HGT".to_string(),
-            "10 mb".to_string(),
-            TimeDelta::hours(6),
-            Some(0),
+            "HGT",
+            "10 mb",
+            &TimeDelta::hours(6),
+            Some("gec00"),
         );
         assert_eq!(
             p,

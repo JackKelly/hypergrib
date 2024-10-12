@@ -1,11 +1,10 @@
 use clap::Parser;
-use futures_util::{Stream, StreamExt, TryFutureExt};
-use object_store::ObjectMeta;
+use futures_util::StreamExt;
+use futures_util::TryFutureExt;
 use std::fs;
-use std::future;
 use url::Url;
 
-use crate::filter_by_ext;
+use hypergrib::filter_by_ext;
 
 /// Create a manifest from GRIB `.idx` files.
 #[derive(Parser, Debug)]

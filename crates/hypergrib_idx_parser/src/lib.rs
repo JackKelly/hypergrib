@@ -1,27 +1,24 @@
 #[doc = include_str!("../README.md")]
 use anyhow;
-use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeDelta, Utc};
-use parameter::Parameter;
+use chrono::{DateTime, NaiveDate, TimeDelta, Utc};
 use serde::Deserialize;
-
-mod parameter;
 
 #[derive(PartialEq, Debug, serde::Deserialize)]
 struct IdxRecord {
     msg_id: u32,
     byte_offset: u32,
     #[serde(deserialize_with = "deserialize_init_datetime")]
-    init_datetime: DateTime<Utc>,
-    parameter: Parameter,
-    level: String,
+    reference_datetime: DateTime<Utc>,
+    parameter: String,
+    vertical_level: String,
     // TODO: Define `struct Level{
     //     fixed_surface_type: gribberish::templates::product::tables::FixedSurfaceType,
     //     value: Option<f32>
     // }`
     // e.g. "10 mb" would be `Level{FixedSurfaceType::IsobaricSurface, 10}`
     #[serde(deserialize_with = "deserialize_step")]
-    step: TimeDelta,
-    ens_member: Option<String>, // TODO: Define `enum EnsembleMember{Control, Perturbed(u16)}`?
+    forecast_step: TimeDelta,
+    ensemble_member: Option<String>,
 }
 
 // TODO: Return an iterator where each item is a `Result<IdxRecord>`.
@@ -85,7 +82,6 @@ where
 #[cfg(test)]
 mod tests {
     use chrono::NaiveDate;
-    use gribberish::templates::product::parameters::meteorological;
 
     use super::*;
 
@@ -104,15 +100,15 @@ mod tests {
             IdxRecord {
                 msg_id: 1,
                 byte_offset: 0,
-                init_datetime: NaiveDate::from_ymd_opt(2017, 1, 1)
+                reference_datetime: NaiveDate::from_ymd_opt(2017, 1, 1)
                     .unwrap()
                     .and_hms_opt(0, 0, 0)
                     .unwrap()
                     .and_utc(),
-                parameter: Parameter::Mass(meteorological::MassProduct::GeopotentialHeight),
-                level: String::from("10 mb"),
-                step: TimeDelta::zero(),
-                ens_member: Some(String::from("ENS=low-res ctl")),
+                parameter: String::from("HGT"),
+                vertical_level: String::from("10 mb"),
+                forecast_step: TimeDelta::zero(),
+                ensemble_member: Some(String::from("ENS=low-res ctl")),
             }
         );
         Ok(())

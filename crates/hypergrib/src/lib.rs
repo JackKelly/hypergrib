@@ -76,6 +76,7 @@ fn set_to_sorted_vec<T: Ord>(set: HashSet<T>) -> Vec<T> {
 }
 
 /// Each `vec` is sorted and contains unique values.
+/// The only way to make a `CoordLabels` is using `CoordLabelsBuilder::build`.
 struct CoordLabels {
     reference_datetime: Vec<DateTime<Utc>>,
     ensemble_member: Vec<String>,
@@ -84,6 +85,7 @@ struct CoordLabels {
     vertical_level: Vec<String>,
 }
 
+/// Get the coordinate labels by reading parts of the GRIB dataset from object storage.
 trait GetCoordLabels {
     async fn get_coord_labels(self) -> anyhow::Result<CoordLabels>;
 }
@@ -91,17 +93,17 @@ trait GetCoordLabels {
 trait ToIdxLocation {
     // TODO: Pass in a struct instead of individual fields?
     fn to_idx_location(
-        init_datetime: DateTime<Utc>,
-        product: String,
-        level: String,
-        step: TimeDelta,
-        ens_member: Option<u32>,
+        reference_datetime: &DateTime<Utc>,
+        parameter: &str,
+        vertical_level: &str,
+        forecast_step: &TimeDelta,
+        ensemble_member: Option<&str>,
     ) -> object_store::path::Path;
 }
 
 /// Filter a stream of `object_store::Result<object_store::ObjectMeta>` to select only the items
 /// which have a file extension which matches `extension`.
-pub(crate) fn filter_by_ext<'a>(
+pub fn filter_by_ext<'a>(
     stream: impl Stream<Item = object_store::Result<ObjectMeta>> + 'a,
     extension: &'static str,
 ) -> impl Stream<Item = object_store::Result<ObjectMeta>> + 'a {
