@@ -145,25 +145,25 @@ enum GefsVersion {
     /// GEFS model version 11?
     ///
     /// Paths of the form `gefs.20170101/00/gec00.t00z.pgrb2aanl.idx`
-    V1,
+    V0,
 
     /// GEFS model version 11?
     ///
     /// Paths of the form `gefs.20180727/00/pgrb2[a|b]/gec00.t00z.pgrb2aanl.idx`
-    V2,
+    V1,
 
-    /// A union of the paths in V2 and V4 for just two runs! It looks like NOAA ran V2 and V3
+    /// A union of the paths in V1 and V3 for just two runs! It looks like NOAA ran V1 and V3
     /// for two initialisations 2020-09-23T00 and T06. But the folders for these two
-    /// init datetimes contain fewer files than in the equivalent "proper" V4 folders: e.g.:
-    /// - gefs.20200923/00/atmos/pgrb2ap5 (V3) =  9,306 entries
-    /// - gefs.20200924/00/atmos/pgrb2ap5 (V4) = 11,419 entries
-    /// - gefs.20210101/00/atmos/pgrb2ap5 (V4) = 11,946 entries
-    /// - gefs.20241010/00/atmos/pgrb2ap5 (V4) = 11,947 entries
+    /// init datetimes contain fewer files than in the equivalent "proper" V3 folders: e.g.:
+    /// - gefs.20200923/00/atmos/pgrb2ap5 (V2) =  9,306 entries
+    /// - gefs.20200924/00/atmos/pgrb2ap5 (V3) = 11,419 entries
+    /// - gefs.20210101/00/atmos/pgrb2ap5 (V3) = 11,946 entries
+    /// - gefs.20241010/00/atmos/pgrb2ap5 (V3) = 11,947 entries
     ///
-    /// So it may be safest to ignore the "V4-like" folders in the folders for these
-    /// two init datetimes and just use the "V2-like" folders for these two init times.
-    /// i.e. just tread V3 as if it were V2.
-    V3,
+    /// So it may be safest to ignore the "V3-like" folders in the folders for these
+    /// two init datetimes and just use the "V1-like" folders for these two init times.
+    /// i.e. just tread V2 as if it were V1.
+    V2,
 
     /// GEFS model version v12?
     ///
@@ -176,22 +176,22 @@ enum GefsVersion {
     /// - `gefs.20241008/00/wave/`
     ///     - `gridded/gefs.wave.t00z.c00.global.0p25.f000.grib2.idx`
     ///     - `station`: Ignore! No GRIB data!
-    V4,
+    V3,
 }
 
 impl GefsVersion {
     const N_GFS_VERSIONS: usize = 4;
     const ALL_GEFS_VERSIONS: [Self; Self::N_GFS_VERSIONS] =
-        [Self::V1, Self::V2, Self::V3, Self::V4];
+        [Self::V0, Self::V1, Self::V2, Self::V3];
 
     /// This is the reference datetime at which this version becomes active. Each version lasts
     /// until the next version's start_reference_datetime minus 6 hours.
     fn start_reference_datetime(&self) -> DateTime<Utc> {
         match *self {
-            Self::V1 => ymdh_to_datetime(2017, 1, 1, 0),
-            Self::V2 => ymdh_to_datetime(2018, 7, 27, 0),
-            Self::V3 => ymdh_to_datetime(2020, 9, 23, 0),
-            Self::V4 => ymdh_to_datetime(2020, 9, 23, 12),
+            Self::V0 => ymdh_to_datetime(2017, 1, 1, 0),
+            Self::V1 => ymdh_to_datetime(2018, 7, 27, 0),
+            Self::V2 => ymdh_to_datetime(2020, 9, 23, 0),
+            Self::V3 => ymdh_to_datetime(2020, 9, 23, 12),
         }
     }
 
@@ -223,6 +223,7 @@ struct BeforeStartOfDatasetError;
 struct GefsIdxPath<'a> {
     path: &'a object_store::path::Path,
     parts: Vec<object_store::path::PathPart<'a>>,
+    version: GefsVersion,
 }
 
 impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxPath<'a> {
@@ -246,12 +247,16 @@ impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxPath<'a> {
 
         // Check the number of parts:
         let n_parts = parts.len();
-        const N_PARTS_EXPECTED: [usize; 3] = [4, 5, 6];
-        if !N_PARTS_EXPECTED.contains(&n_parts) {
-            return make_error(format!(
-                "Expected {N_PARTS_EXPECTED:?} parts in the path of the idx file. Found {n_parts} parts instead.",
-            ));
-        }
+        let version = match n_parts {
+            4 => GefsVersion::V0,
+            5 => GefsVersion::V1,
+            6 => GefsVersion::V3,
+            _ => {
+                return make_error(format!(
+                    "Found an unexpected number of parts in the GEFS path. Found {n_parts} parts",
+                ))
+            }
+        };
 
         // Check that the path ends with `.idx`.
         let last_part = &parts[n_parts - 1];
@@ -262,6 +267,7 @@ impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxPath<'a> {
         Ok(Self {
             path: idx_path,
             parts,
+            version,
         })
     }
 }
