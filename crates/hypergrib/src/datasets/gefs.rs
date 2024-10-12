@@ -291,7 +291,7 @@ fn ymdh_to_datetime(year: i32, month: u32, day: u32, hour: u32) -> DateTime<Utc>
 #[cfg(test)]
 mod tests {
 
-    use std::cell::OnceCell;
+    use std::{cell::OnceCell, sync::OnceLock};
 
     use chrono::{naive::serde::ts_milliseconds_option::deserialize, NaiveDateTime};
 
@@ -354,32 +354,31 @@ mod tests {
         records
     }
 
-    const GEFS_TEST_DATA: OnceCell<Vec<GfsTest>> = std::cell::OnceCell::new();
+    static GEFS_TEST_DATA: OnceLock<Vec<GfsTest>> = OnceLock::new();
 
     #[test]
     fn test_idx_path_to_reference_datetime() {
-        let binding = GEFS_TEST_DATA;
-        let gefs_test_data = binding.get_or_init(move || load_gefs_test_paths_csv());
-
-        gefs_test_data.iter().for_each(|gefs_test_struct| {
-            let path = object_store::path::Path::try_from(gefs_test_struct.path.as_str()).expect(
-                &format!(
-                    "Failed to parse path string into an object_store::path::Path! {}",
-                    gefs_test_struct.path
-                ),
-            );
-            let dt = GefsIdxPath::try_from(&path)
-                .unwrap()
-                .extract_reference_datetime()
-                .expect(&format!(
-                    "Failed to extract reference datetime from {}",
-                    gefs_test_struct.path
-                ));
-            assert_eq!(
-                dt, gefs_test_struct.reference_datetime,
-                "Incorrect reference datetime when parsing idx path '{path}'"
-            );
-        });
+        GEFS_TEST_DATA
+            .get_or_init(move || load_gefs_test_paths_csv())
+            .iter()
+            .for_each(|gefs_test_struct| {
+                let path = object_store::path::Path::try_from(gefs_test_struct.path.as_str())
+                    .expect(&format!(
+                        "Failed to parse path string into an object_store::path::Path! {}",
+                        gefs_test_struct.path
+                    ));
+                let dt = GefsIdxPath::try_from(&path)
+                    .unwrap()
+                    .extract_reference_datetime()
+                    .expect(&format!(
+                        "Failed to extract reference datetime from {}",
+                        gefs_test_struct.path
+                    ));
+                assert_eq!(
+                    dt, gefs_test_struct.reference_datetime,
+                    "Incorrect reference datetime when parsing idx path '{path}'"
+                );
+            });
     }
 
     #[test]
@@ -387,24 +386,22 @@ mod tests {
         assert!(
             GefsVersion::try_from_reference_datetime(&ymdh_to_datetime(2000, 1, 1, 0)).is_err()
         );
-        [
-            ymdh_to_datetime(2018, 1, 1, 0),
-            ymdh_to_datetime(2018, 8, 1, 13),
-            ymdh_to_datetime(2020, 9, 23, 6),
-            ymdh_to_datetime(2025, 1, 1, 0),
-        ]
-        .iter()
-        .zip(GefsVersion::ALL_GEFS_VERSIONS.iter())
-        .for_each(|(query_dt, expected_gefs_version)| {
-            assert_eq!(
-                GefsVersion::try_from_reference_datetime(&query_dt).unwrap(),
-                expected_gefs_version
-            )
-        });
+        GEFS_TEST_DATA
+            .get_or_init(move || load_gefs_test_paths_csv())
+            .iter()
+            .for_each(|gefs_test_struct| {
+                assert_eq!(
+                    GefsVersion::try_from_reference_datetime(&gefs_test_struct.reference_datetime)
+                        .unwrap(),
+                    &gefs_test_struct.gefs_version_enum_variant,
+                )
+            });
     }
 
     #[test]
     fn test_to_idx_path() -> anyhow::Result<()> {
+        // TODO: Once `Gefs::to_idx_path` knows how to output different paths for different
+        // `GefsVersion`s, then update this test to use `GEFS_TEST_DATA`.
         let p = Gefs::to_idx_path(
             &ymdh_to_datetime(2017, 1, 1, 0),
             "HGT",
