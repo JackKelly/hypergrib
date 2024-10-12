@@ -12,22 +12,28 @@ use crate::filter_by_ext;
 const BUCKET_ID: &str = "noaa-gefs-pds";
 struct Gefs;
 
-impl crate::ToIdxLocation for Gefs {
-    fn to_idx_location(
+impl crate::ToIdxPath for Gefs {
+    fn to_idx_path(
         reference_datetime: &chrono::DateTime<chrono::Utc>,
         _parameter: &str,
         _vertical_level: &str,
         forecast_step: &TimeDelta,
         ensemble_member: Option<&str>,
     ) -> object_store::path::Path {
+        // TODO: The code below only works for "old" GEFS paths. But GEFS switched to new,
+        // more complicated paths at some point. For the hypergrib MVP, change this function to
+        // only handle the new paths. Then implement both "old" and "new" and switch on the
+        // `reference_datetime` to decide whether to use "old" or "new" format. And, for the "new"
+        // format, have a `phf::Map` which tells us whether the parameter belongs to 'atmos',
+        // 'chem', 'wave'; and 'pgrb2a' or 'pgrb2b' etc.
         let mut parts = Vec::<object_store::path::PathPart>::with_capacity(3);
-        let init_hour = format!("{:02}", reference_datetime.hour());
 
         // First part of the Path:
         parts.push(reference_datetime.format("gefs.%Y%m%d").to_string().into());
 
         // Second part of the Path:
-        parts.push(init_hour.clone().into());
+        let init_hour = format!("{:02}", reference_datetime.hour());
+        parts.push(init_hour.as_str().into());
 
         // Third part of the Path:
         let ensemble_member = ensemble_member.expect("GEFS requires the ensemble member!");
@@ -81,10 +87,10 @@ impl GefsCoordLabelsBuilder {
 
         // Loop through each .idx filename:
         while let Some(meta) = list_stream.next().await.transpose().unwrap() {
-            let gefs_idx_loc = GefsIdxLocation::try_from(&meta.location)?;
+            let gefs_idx_path = GefsIdxPath::try_from(&meta.location)?;
             self.coord_labels_builder
                 .reference_datetime
-                .insert(gefs_idx_loc.reference_datetime()?);
+                .insert(gefs_idx_path.reference_datetime()?);
         }
         Ok(())
     }
@@ -117,7 +123,7 @@ impl Display for GefsIdxError {
 
 impl Error for GefsIdxError {}
 
-// The location of the `.idx` file is structured like this:
+// The path of the `.idx` file is structured like this:
 //     noaa-gefs-pds/
 //     gefs.<YYYYMMDD>/
 //     <HH>/
@@ -134,28 +140,28 @@ impl Error for GefsIdxError {}
 //     - `geavg.t00z.pgrb2a.0p50.f840.idx`
 //     - `gespr.t00z.pgrb2a.0p50.f840.idx`
 //     - `gec00.t00z.pgrb2a.0p50.f000.idx`
-struct GefsIdxLocation<'a> {
+struct GefsIdxPath<'a> {
     path: &'a object_store::path::Path,
     parts: Vec<object_store::path::PathPart<'a>>,
 }
 
-impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxLocation<'a> {
+impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxPath<'a> {
     type Error = GefsIdxError;
 
-    fn try_from(idx_location: &'a object_store::path::Path) -> Result<Self, Self::Error> {
-        let parts: Vec<_> = idx_location.parts().collect();
+    fn try_from(idx_path: &'a object_store::path::Path) -> Result<Self, Self::Error> {
+        let parts: Vec<_> = idx_path.parts().collect();
 
         // Helper closure:
         let make_error = |error: String| -> Result<Self, Self::Error> {
             Err(GefsIdxError {
                 error,
-                path: idx_location.to_string(),
+                path: idx_path.to_string(),
             })
         };
 
         // Sanity checks:
         if parts[0].as_ref() != BUCKET_ID {
-            return make_error(format!("GEFS location must start with '{BUCKET_ID}'."));
+            return make_error(format!("GEFS path must start with '{BUCKET_ID}'."));
         }
 
         // Check the number of parts:
@@ -163,31 +169,31 @@ impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxLocation<'a> {
         const N_PARTS_EXPECTED: [usize; 2] = [4, 6];
         if !N_PARTS_EXPECTED.contains(&n_parts) {
             return make_error(format!(
-                "Expected {N_PARTS_EXPECTED:?} parts in the location of the idx file. Found {n_parts} parts instead.",
+                "Expected {N_PARTS_EXPECTED:?} parts in the path of the idx file. Found {n_parts} parts instead.",
             ));
         }
 
         // Check that the path ends with `.idx`.
         let last_part = &parts[n_parts - 1];
         if !last_part.as_ref().ends_with(".idx") {
-            return make_error("The location must end with '.idx'!".to_string());
+            return make_error("The path must end with '.idx'!".to_string());
         }
 
         Ok(Self {
-            path: idx_location,
+            path: idx_path,
             parts,
         })
     }
 }
 
-impl GefsIdxLocation<'_> {
+impl GefsIdxPath<'_> {
     fn reference_datetime(&self) -> anyhow::Result<DateTime<Utc>> {
         let date = NaiveDate::parse_from_str(self.parts[1].as_ref(), "gefs.%Y%m%d")?;
         let hour: u32 = self.parts[2].as_ref().parse()?;
         match date.and_hms_opt(hour, 0, 0) {
             Some(dt) => Ok(dt.and_utc()),
             None => Err(GefsIdxError {
-                error: format!("Invalid hour {hour} when parsing location of idx"),
+                error: format!("Invalid hour {hour} when parsing path of idx"),
                 path: self.path.to_string(),
             }
             .into()),
@@ -199,7 +205,7 @@ impl GefsIdxLocation<'_> {
 mod tests {
     use chrono::{NaiveDateTime, TimeZone};
 
-    use crate::ToIdxLocation;
+    use crate::ToIdxPath;
 
     use super::*;
 
@@ -214,7 +220,7 @@ mod tests {
     ];
 
     #[test]
-    fn test_idx_loc_to_reference_datetime() {
+    fn test_idx_path_to_reference_datetime() {
         [
             Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
             Utc.with_ymd_and_hms(2017, 1, 1, 0, 0, 0).unwrap(),
@@ -230,7 +236,7 @@ mod tests {
             let path = object_store::path::Path::try_from(*path_str).expect(&format!(
                 "Failed to parse path string into an object_store::path::Path! {path_str}"
             ));
-            let dt = GefsIdxLocation::try_from(&path)
+            let dt = GefsIdxPath::try_from(&path)
                 .unwrap()
                 .reference_datetime()
                 .expect(&format!(
@@ -238,14 +244,14 @@ mod tests {
                 ));
             assert_eq!(
                 dt, expected_datetime,
-                "Incorrect reference datetime when parsing idx location '{path}'"
+                "Incorrect reference datetime when parsing idx path '{path}'"
             );
         });
     }
 
     #[test]
-    fn test_to_idx_location() -> anyhow::Result<()> {
-        let p = Gefs::to_idx_location(
+    fn test_to_idx_path() -> anyhow::Result<()> {
+        let p = Gefs::to_idx_path(
             // Note that the string on the line below includes minutes, even though the GEFS
             // idx files do not contain minutes. This is because `chrono::NaiveDateTime::parse_from_str`
             // throws an error if minutes aren't present in the string :(.

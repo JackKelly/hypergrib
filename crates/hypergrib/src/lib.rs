@@ -90,9 +90,9 @@ trait GetCoordLabels {
     async fn get_coord_labels(self) -> anyhow::Result<CoordLabels>;
 }
 
-trait ToIdxLocation {
+trait ToIdxPath {
     // TODO: Pass in a struct instead of individual fields?
-    fn to_idx_location(
+    fn to_idx_path(
         reference_datetime: &DateTime<Utc>,
         parameter: &str,
         vertical_level: &str,
