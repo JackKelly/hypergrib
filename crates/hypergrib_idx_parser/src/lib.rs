@@ -82,6 +82,7 @@ where
 #[cfg(test)]
 mod tests {
     use chrono::NaiveDate;
+    use gribberish::templates::product::parameters::meteorological;
 
     use super::*;
 

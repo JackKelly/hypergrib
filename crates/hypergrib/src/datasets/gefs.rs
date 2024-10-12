@@ -6,6 +6,7 @@ use std::{error::Error, fmt::Display, sync::Arc};
 use chrono::{DateTime, NaiveDate, TimeDelta, TimeZone, Timelike, Utc};
 use futures_util::StreamExt;
 use object_store::ObjectStore;
+use serde::Deserialize;
 
 use crate::filter_by_ext;
 
@@ -138,7 +139,7 @@ impl Error for GefsIdxError {}
 ///
 /// TODO: Extract the *actual* GEFS model version numbers from the GRIB files and use those as the
 /// enum variant names.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 #[allow(non_camel_case_types)]
 enum GefsVersion {
     /// GEFS model version 11?
@@ -245,7 +246,7 @@ impl<'a> TryFrom<&'a object_store::path::Path> for GefsIdxPath<'a> {
 
         // Check the number of parts:
         let n_parts = parts.len();
-        const N_PARTS_EXPECTED: [usize; 2] = [4, 6];
+        const N_PARTS_EXPECTED: [usize; 3] = [4, 5, 6];
         if !N_PARTS_EXPECTED.contains(&n_parts) {
             return make_error(format!(
                 "Expected {N_PARTS_EXPECTED:?} parts in the path of the idx file. Found {n_parts} parts instead.",
@@ -290,46 +291,92 @@ fn ymdh_to_datetime(year: i32, month: u32, day: u32, hour: u32) -> DateTime<Utc>
 #[cfg(test)]
 mod tests {
 
+    use std::cell::OnceCell;
+
+    use chrono::{naive::serde::ts_milliseconds_option::deserialize, NaiveDateTime};
+
     use crate::ToIdxPath;
 
     use super::*;
 
-    const IDX_TEST_PATHS: [&str; 7] = [
-        "noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2aanl.idx",
-        "noaa-gefs-pds/gefs.20170101/00/gec00.t00z.pgrb2bf330.idx",
-        "noaa-gefs-pds/gefs.20170101/00/gep20.t00z.pgrb2bf384.idx",
-        "noaa-gefs-pds/gefs.20180727/00/pgrb2[a|b]/gec00.t00z.pgrb2aanl.idx",
-        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/geavg.t00z.pgrb2a.0p50.f000.idx",
-        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/geavg.t00z.pgrb2a.0p50.f840.idx",
-        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/gespr.t00z.pgrb2a.0p50.f840.idx",
-        "noaa-gefs-pds/gefs.20241010/00/atmos/pgrb2ap5/gec00.t00z.pgrb2a.0p50.f000.idx",
-    ];
+    #[derive(PartialEq, Debug, serde::Deserialize, Clone)]
+    struct GfsTest {
+        path: String,
+        #[serde(deserialize_with = "deserialize_gefs_version_enum")]
+        gefs_version_enum_variant: GefsVersion,
+        #[serde(deserialize_with = "deserialize_reference_datetime")]
+        reference_datetime: DateTime<Utc>,
+        ensemble_member: String,
+        #[serde(deserialize_with = "deserialize_forecast_hour")]
+        forecast_hour: TimeDelta,
+    }
+
+    fn deserialize_reference_datetime<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = <&str>::deserialize(deserializer)?;
+        let s = format!("{s}00");
+        match NaiveDateTime::parse_from_str(&s, "%Y%m%dT%H%M") {
+            Ok(dt) => Ok(dt.and_utc()),
+            Err(e) => Err(serde::de::Error::custom(format!(
+                "Invalid init datetime: {e}"
+            ))),
+        }
+    }
+
+    fn deserialize_gefs_version_enum<'de, D>(deserializer: D) -> Result<GefsVersion, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let variant_i = <usize>::deserialize(deserializer)?;
+        Ok(GefsVersion::ALL_GEFS_VERSIONS[variant_i].clone())
+    }
+
+    fn deserialize_forecast_hour<'de, D>(deserializer: D) -> Result<TimeDelta, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let forecast_hour = <i64>::deserialize(deserializer)?;
+        Ok(TimeDelta::hours(forecast_hour))
+    }
+
+    fn load_gefs_test_paths_csv() -> Vec<GfsTest> {
+        // Gets the MANIFEST_DIR of the sub-crate.
+        let mut d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        d.push("src/datasets/gefs_test_paths.csv");
+        let mut rdr =
+            csv::Reader::from_path(&d).expect(format!("Failed to open {:?}", &d).as_str());
+        let mut records = vec![];
+        for result in rdr.deserialize() {
+            records.push(result.unwrap());
+        }
+        records
+    }
+
+    const GEFS_TEST_DATA: OnceCell<Vec<GfsTest>> = std::cell::OnceCell::new();
 
     #[test]
     fn test_idx_path_to_reference_datetime() {
-        [
-            ymdh_to_datetime(2017, 1, 1, 0),
-            ymdh_to_datetime(2017, 1, 1, 0),
-            ymdh_to_datetime(2017, 1, 1, 0),
-            ymdh_to_datetime(2024, 10, 10, 0),
-            ymdh_to_datetime(2024, 10, 10, 0),
-            ymdh_to_datetime(2024, 10, 10, 0),
-            ymdh_to_datetime(2024, 10, 10, 0),
-        ]
-        .into_iter()
-        .zip(IDX_TEST_PATHS.iter())
-        .for_each(|(expected_datetime, path_str)| {
-            let path = object_store::path::Path::try_from(*path_str).expect(&format!(
-                "Failed to parse path string into an object_store::path::Path! {path_str}"
-            ));
+        let binding = GEFS_TEST_DATA;
+        let gefs_test_data = binding.get_or_init(move || load_gefs_test_paths_csv());
+
+        gefs_test_data.iter().for_each(|gefs_test_struct| {
+            let path = object_store::path::Path::try_from(gefs_test_struct.path.as_str()).expect(
+                &format!(
+                    "Failed to parse path string into an object_store::path::Path! {}",
+                    gefs_test_struct.path
+                ),
+            );
             let dt = GefsIdxPath::try_from(&path)
                 .unwrap()
                 .extract_reference_datetime()
                 .expect(&format!(
-                    "Failed to extract reference datetime from {path_str}"
+                    "Failed to extract reference datetime from {}",
+                    gefs_test_struct.path
                 ));
             assert_eq!(
-                dt, expected_datetime,
+                dt, gefs_test_struct.reference_datetime,
                 "Incorrect reference datetime when parsing idx path '{path}'"
             );
         });
