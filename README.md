@@ -47,3 +47,4 @@ For the planned design, please see [design.md](https://github.com/JackKelly/hype
 2. [wgrib C source code](https://github.com/NOAA-EMC/NCEPLIBS-grib_util/blob/develop/src/wgrib/wgrib.c)
 3. [NCEP WMO GRIB2 Documentation](https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/)
 4. [GRIB2 use at NCEP](https://www.nco.ncep.noaa.gov/pmb/docs/grib2/)
+5. [`GDAL's CSV representation of the GRIB tables`](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data). See the [README for that directory](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT)
