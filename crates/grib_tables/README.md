@@ -8,4 +8,5 @@
       numbers to Products, converting from abbreviation strings to Products, and getting information about each Product).
 - [ ] Flesh the tables out (manually) with enough data to get started
 - [ ] Link to this code from https://github.com/mpiannucci/gribberish/issues/63
+- [ ] Also open issue on https://github.com/noritada/grib-rs to ask if it makes sense to have a common repo for the GRIB code tables
 - [ ] Think about code-gen for some parts (e.g. the parameter tables).
