@@ -1,5 +1,5 @@
 use anyhow::Context;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 // From https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_table4-0.shtml
 enum ProductTemplate {
@@ -43,9 +43,9 @@ struct NumericId {
     product_discipline: u8,
     parameter_category: u8,
     parameter_number: u8,
+    master_table_version: u8,
     originating_center: u8,
     local_table_version: u8,
-    master_table_version: u8,
 }
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug, derive_more::Display)]
@@ -76,30 +76,20 @@ enum Status {
     Deprecated,
 }
 
-// TODO: Use `pin` and NonNull pointers: https://doc.rust-lang.org/nightly/std/pin/index.html#a-self-referential-struct
-// TODO: Or, maybe better: Don't use `pin`! Remove `params`. Instead, have two `HashMap`s:
-//       1. `HashMap<NumericId, Parameter>` which stores the parameters. And remove the `numeric_id`
-//          field from `Parameter`.
-//       2. `HashMap<Abbreviation, NumericId>`. As such, looking up a `Parameter` from an
-//          `Abbreviation` will require two steps: Map from `Abbreviation` to `NumericId`, and then
-//          map from `NumericId` to `Parameter`.
-//       This gets rid of the need to use `Pin`, and means that we no longer have to store
-//       `NumericId` in the `Parameter` struct.
-//       If any `Abbreviation`s map to multiple `NumericId`s then use `HashMap<Abbreviation,
-//       Vec<NumericId>>`.
-// TODO: How do we find a `Parameter` if we don't know the `originating_center` etc? For example,
-//       when decoding an `.idx` file we might not know any of this information. Maybe we
-//       could have a `HashMap<MinimalNumericId, Vec<NumericId>>` where `struct
-//       MinimalNumericId{discipline: u8, category: u8, number: u8}`.
-//       And maybe rename `NumericId` to `NumericIdWithVersionNums`, and rename `MinimalNumericId` to `NumericId`
+// TODO:
+// 1. Change `NumericId` to be `struct NumericId(u64)`
+// 2. Impl a `new` method on `NumericId` which takes discipline, category, etc and bit-shifts them
+//    into a single u64.
+// 3. Change the implementation of `ParameterDatabase` to match the new definition:
+
 struct ParameterDatabase {
-    params: Vec<Parameter>,
+    /// We use a `BTreeMap` so we can get, say, all the versions of a particular parameter_number
+    /// using BTreeMap.range.
+    numeric_id_to_params: BTreeMap<NumericId, Parameter>,
 
-    /// Maps from the `NumericId` of the `Parameter` to the index into `params`.
-    numeric_lookup: HashMap<NumericId, usize>,
-
-    /// Maps from the `Abbreviation` of the `Parameter` to the index into `params`.
-    abbrev_lookup: HashMap<Abbreviation, usize>,
+    /// TODO: Empirically test if we actually need the value to be a BTreeSet (instead of just a
+    /// NumericId)
+    abbrev_to_numeric_id: HashMap<Abbreviation, BTreeSet<NumericId>>,
 }
 
 #[derive(thiserror::Error, Debug, derive_more::Display)]
