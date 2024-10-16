@@ -4,7 +4,7 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
 
 ### Planned `hypergrib` MVP features (for getting coordinate labels)
 - [ ] Get a list of init datetimes, ensemble members, and steps:
-    1. List all `.idx` filenames. (Actually, we can get all the init datetimes "just" by reading the directory names. But `object_store.list` doesn't provide a way to limit the returned values to just directories.)
+    1. List all `.idx` filenames. (Actually, we can get all the init datetimes "just" by reading the directory names perhaps using [`ObjectStore::list_with_delimiter`]([url](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html#tymethod.list_with_delimiter)) which is _not_ recursive. Although note that the docs for [`object_store::ListResult`]([url](https://docs.rs/object_store/latest/object_store/struct.ListResult.html)) say "_Individual result sets may be limited to 1,000 objects based on the underlying object storage’s limitations._". If this is too slow or doesn't work then we may have to use the native cloud storage APIs: for example, GCP [includes a `matchGlob` query parameter]([url](https://cloud.google.com/storage/docs/json_api/v1/objects/list)) that could be very useful. Or maybe work to extend `object_store` to implement `match_glob`)
     2. GEFS filenames include init datetimes, ensmeble members, and steps. Although this will be a dataset-specific feature. Other datasets might not include all this info in the filenames.
     3. Extract the init datetime (as a `DateTime<Utc>`), the ensemble member (as a `String`) and the step (as a `TimeDelta`).
 - [ ] Record if/when the number of ensemble members and/or steps changes.
