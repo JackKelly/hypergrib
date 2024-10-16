@@ -1,14 +1,11 @@
 [package]
-name = "hypergrib_grib_tables"
+name = "grib_tables"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 homepage.workspace = true
 repository.workspace = true
-readme = "README.md"
+readme.workspace = true
 authors.workspace = true
 
 [dependencies]
-num-derive = "0.4.2"
-num-traits = "0.2.19"
-phf = { version = "0.11.2", features = ["macros"] }
