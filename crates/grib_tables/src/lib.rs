@@ -39,6 +39,7 @@ struct IndividualEnsembleForecastAtHorizontalLevel {
     master_table_version
 )]
 struct NumericId {
+    // TODO: Maybe all these fields (except `local_table_version`) should be Enums?
     product_discipline: u8,
     parameter_category: u8,
     parameter_number: u8,
@@ -64,7 +65,7 @@ struct Parameter {
     numeric_id: NumericId,
     description: String,
     note: String,
-    unit: String,
+    unit: String, // TODO: Maybe use a Unit enum?
     abbreviation: Abbreviation,
     status: Status,
 }
