@@ -4,8 +4,8 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
 
 ### Planned `hypergrib` MVP features (for getting coordinate labels)
 - [ ] Get a list of init datetimes, ensemble members, and steps:
-    1. List all `.idx` filenames.
-    2. GEFS filenames include all this information. Although this will be a dataset-specific feature. Other datasets might not include all this info in the filenames.
+    1. List all `.idx` filenames. (Actually, we can get all the init datetimes "just" by reading the directory names. But `object_store.list` doesn't provide a way to limit the returned values to just directories.)
+    2. GEFS filenames include init datetimes, ensmeble members, and steps. Although this will be a dataset-specific feature. Other datasets might not include all this info in the filenames.
     3. Extract the init datetime (as a `DateTime<Utc>`), the ensemble member (as a `String`) and the step (as a `TimeDelta`).
 - [ ] Record if/when the number of ensemble members and/or steps changes.
 - [ ] Get a list of parameters and vertical levels by reading the bodies of first day's worth of `.idx` files, and the bodies of the last day's worth of `.idx` files. Beware that, for example, the GEFS analysis step doesn't include the same parameters as the forecast steps! (Which is why it's important to read an entire day's worth of data). If the first and last days have the same coordinate labels then assume that the coordinate labels stay the same across the entire dataset. If the coords in the first and last days differ then begin an "over-eager" binary search of the `.idx` files to find when coordinates change (e.g. when the NWP is upgraded an more ensemble members are added - see https://github.com/JackKelly/hypergrib/discussions/15). Submit many GET requests at once. The coords might change more than once. For the MVP:
