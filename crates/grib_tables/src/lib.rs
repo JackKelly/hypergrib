@@ -28,6 +28,11 @@ struct IndividualEnsembleForecastAtHorizontalLevel {
 
 //---------------------- PARAMETER DATABASE: --------------------------
 
+/// TODO: Change to u64.
+/// This is a u64 because `NumericId` is used as the key in a `BTreeMap`, and u64s are very fast to
+/// compare. (And `BTreeMaps` frequently compare keys!)
+/// `originating_center` and `local_table_version` must be zero for parameters
+/// which belong to the master table.
 #[derive(Hash, Eq, PartialEq, Copy, Clone, Debug, derive_more::Display)]
 #[display(
     "{}, {}, {}, {}, {}, {}",
