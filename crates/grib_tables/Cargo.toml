@@ -9,3 +9,6 @@ readme.workspace = true
 authors.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+derive_more = { version = "1.0.0", features = ["display"]}
+thiserror = "1.0.64"
