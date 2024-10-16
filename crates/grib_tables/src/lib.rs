@@ -77,6 +77,20 @@ enum Status {
 }
 
 // TODO: Use `pin` and NonNull pointers: https://doc.rust-lang.org/nightly/std/pin/index.html#a-self-referential-struct
+// TODO: Or, don't use `pin`! Remove `params`. Instead, have two `HashMap`s:
+//       1. `HashMap<NumericId, Parameter>` which stores the parameters. And remove the `numeric_id`
+//          field from `Parameter`.
+//       2. `HashMap<Abbreviation, NumericId>`. As such, looking up a `Parameter` from an
+//          `Abbreviation` will require two steps: Map from `Abbreviation` to `NumericId`, and then
+//          map from `NumericId` to `Parameter`.
+//       This gets rid of the need to use `Pin`, and means that we no longer have to store
+//       `NumericId` in the `Parameter` struct.
+//       If any `Abbreviation`s map to multiple `NumericId`s then use `HashMap<Abbreviation,
+//       Vec<NumericId>>`.
+// TODO: How do we find a `Parameter` if we don't know the `originating_center` etc? For example,
+//       when decoding an `.idx` file we might not know any of this information. Maybe we
+//       could have a `HashMap<MinimalNumericId, Vec<NumericId>>` where `struct
+//       MinimalNumericId{discipline: u8, category: u8, number: u8}`.
 struct ParameterDatabase {
     params: Vec<Parameter>,
 
