@@ -1,5 +1,7 @@
 use anyhow::Context;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+const BITS_PER_BYTE: u64 = 8;
 
 /// This is a u64 because `NumericId` is used as the key in a `BTreeMap`, and u64s are very fast to
 /// compare. (And `BTreeMaps` frequently compare keys!)
@@ -9,6 +11,8 @@ struct NumericId(u64);
 impl NumericId {
     /// `originating_center` and `local_table_version` must be `u16::MAX` and `u8::MAX` respectively for parameters
     /// which belong to the master table.
+    /// TODO: Passing in 6 ints is ugly and error-prone. Let's pass in a struct. Or use a builder
+    /// pattern so the calling code can easily see which parameter is which!
     fn new(
         product_discipline: u8,
         parameter_category: u8,
@@ -17,7 +21,6 @@ impl NumericId {
         originating_center: u16,
         local_table_version: u8,
     ) -> Self {
-        const BITS_PER_BYTE: u64 = 8;
         let mut numeric_id = 0;
         numeric_id &= (product_discipline as u64) << BITS_PER_BYTE * 6;
         numeric_id &= (parameter_category as u64) << BITS_PER_BYTE * 5;
@@ -30,7 +33,9 @@ impl NumericId {
 
     // TODO: Test this!
     fn discipline(&self) -> u8 {
-        (self.0 & 0x00_FF_00_00_00_00_00_00).try_into().unwrap()
+        ((self.0 & 0x00_FF_00_00_00_00_00_00) >> BITS_PER_BYTE * 6)
+            .try_into()
+            .unwrap()
     }
 
     // TODO: Implement getters for the other numeric identifiers. And test!
@@ -40,15 +45,7 @@ impl NumericId {
 struct Abbreviation(String);
 
 #[derive(Clone, Debug, derive_more::Display, PartialEq, Eq)]
-#[display(
-    "({}, {}, {}, {}, {}, {})",
-    numeric_id,
-    description,
-    note,
-    unit,
-    abbreviation,
-    status
-)]
+#[display("({}, {}, {}, {}, {})", description, note, unit, abbreviation, status)]
 struct Parameter {
     description: String,
     note: String,
@@ -74,8 +71,9 @@ struct ParameterDatabase {
 }
 
 #[derive(thiserror::Error, Debug, derive_more::Display)]
+#[display("{:?}, {:?}", _0.0, _0.1)]
 enum ParameterInsertionError {
-    NumericKeyAlreadyExists(Parameter),
+    NumericKeyAlreadyExists((NumericId, Parameter)),
 }
 
 enum AbbrevToParameter<'a> {
@@ -105,7 +103,9 @@ impl ParameterDatabase {
             .or_insert(BTreeSet::from([numeric_id]));
 
         if self.numeric_id_to_params.contains_key(&numeric_id) {
-            return Err(ParameterInsertionError::NumericKeyAlreadyExists(parameter));
+            return Err(ParameterInsertionError::NumericKeyAlreadyExists((
+                numeric_id, parameter,
+            )));
         }
         self.numeric_id_to_params
             .insert(numeric_id, parameter)
@@ -152,19 +152,11 @@ mod test {
 
     #[test]
     fn insert_and_retreive() -> anyhow::Result<()> {
-        let numeric_id = NumericId {
-            product_discipline: 0,
-            parameter_category: 0,
-            parameter_number: 0,
-            originating_center: 0,
-            local_table_version: 0,
-            master_table_version: 0,
-        };
+        let numeric_id = NumericId::new(0, 0, 0, 0, 0, 0);
 
         let abbreviation = Abbreviation("FOO".to_string());
 
         let param = Parameter {
-            numeric_id,
             description: "Foo".to_string(),
             note: "Bar".to_string(),
             unit: "K".to_string(),
@@ -175,14 +167,18 @@ mod test {
         let mut param_db = ParameterDatabase::new();
         assert_eq!(param_db.len(), 0);
 
-        param_db.insert(param.clone())?;
+        param_db.insert(numeric_id.clone(), param.clone())?;
         assert_eq!(param_db.len(), 1);
 
-        let retrieved_param = param_db
-            .abbreviation_to_parameter(&param.abbreviation)
-            .context("Failed to map from abbrev to param")?;
+        let retrieved_param = param_db.abbreviation_to_parameter(&param.abbreviation);
+        // TODO: Fix the line below!
+        // .context("Failed to map from abbrev to param")?;
 
-        assert_eq!(param, *retrieved_param);
+        if let AbbrevToParameter::Unique((_, unique_param)) = retrieved_param {
+            assert_eq!(param, *unique_param);
+        } else {
+            panic!("");
+        }
 
         Ok(())
     }
