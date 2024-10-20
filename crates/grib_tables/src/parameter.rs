@@ -107,9 +107,8 @@ impl ParameterDatabase {
                 numeric_id, parameter,
             )));
         }
-        self.numeric_id_to_params
-            .insert(numeric_id, parameter)
-            .unwrap();
+        let insert_option = self.numeric_id_to_params.insert(numeric_id, parameter);
+        assert!(insert_option.is_none(), "insertion into numeric_id_to_params should return None here because we test for `contains_key()` above.");
         Ok(())
     }
 
