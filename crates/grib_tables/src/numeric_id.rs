@@ -1,5 +1,23 @@
 const N_BITS_PER_BYTE: u64 = 8;
 
+/// `NumericId` stores the unique numerical identifier for each GRIB `Parameter` as a single `u64`.
+///
+/// The components of the numerical ID are positioned into a single `u64` as follows:
+/// (The right-most byte is byte 0):
+///
+/// - Byte 7:      Zero (not used)       u8
+/// - Byte 6:      product_discipline    u8
+/// - Byte 5:      parameter_category    u8
+/// - Byte 4:      parameter_number      u8
+/// - Byte 3:      master_table_version  u8
+/// - Bytes 1 & 2: originating_center    u16
+/// - Byte 0:      local_table_version   u8
+///
+/// In this way, we can, for example, get all parameters for a given category by
+/// getting a `range` from the `BTreeMap`
+/// from `0x00_<product_discipline>_<parameter_category>_00_00_00_00_00`
+/// to   `0x00_<product_discipline>_<parameter_category>_FF_FF_FF_FF_FF`
+///
 /// `NumericId` is a `u64` because `NumericId` is used as the key in a `BTreeMap`, and `u64`s
 /// are very fast to compare. (And `BTreeMaps` frequently compare keys!)
 #[derive(PartialOrd, Ord, Eq, PartialEq, Copy, Clone, Debug, derive_more::Display)]
@@ -19,22 +37,6 @@ impl NumericId {
     /// `originating_center` and `local_table_version` must be `u16::MAX` and `u8::MAX`
     /// respectively for parameters which belong to the master table. This is consistent with
     /// the GRIB spec, which uses `u16::MAX` and `u8::MAX` to indicate a missing value.
-    ///
-    /// The input parameters are positioned into a single `u64` as follows:
-    /// (The right-most byte is byte 0):
-    ///
-    /// - Byte 7: Zero (not used)
-    /// - Byte 6: product_discipline (u8)
-    /// - Byte 5: parameter_category (u8)
-    /// - Byte 4: parameter_number (u8)
-    /// - Byte 3: master_table_version (u8)
-    /// - Bytes 1 & 2: originating_center (u16)
-    /// - Byte 0: local_table_version (u8)
-    ///
-    /// In this way, we can, for example, get all parameters for a given category by
-    /// getting a `range` from the `BTreeMap`
-    /// from `0x00_<product_discipline>_<parameter_category>_00_00_00_00_00`
-    /// to `0x00_<product_discipline>_<parameter_category>_FF_FF_FF_FF_FF`
     ///
     /// TODO: Passing in 6 ints is ugly and error-prone. Let's pass in a struct. Or use a builder
     /// pattern so the calling code can easily see which parameter is which!
