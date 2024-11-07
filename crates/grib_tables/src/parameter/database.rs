@@ -2,31 +2,31 @@ use std::collections::BTreeSet;
 
 use std::collections::HashMap;
 
-use crate::{numeric_id::NumericId, parameter};
+use super::{numeric_id::NumericId, Abbreviation, Parameter};
 
 use std::collections::BTreeMap;
 
 pub(crate) struct ParameterDatabase {
     /// We use a `BTreeMap` so we can get, say, all the versions of a particular parameter_number
     /// using BTreeMap.range.
-    pub(crate) numeric_id_to_params: BTreeMap<NumericId, parameter::Parameter>,
+    pub(crate) numeric_id_to_params: BTreeMap<NumericId, Parameter>,
 
     /// TODO: Empirically test if we actually need the value to be a BTreeSet (instead of just a
     /// NumericId). In other words, check if any GRIB abbreviations map to multiple parameters.
-    pub(crate) abbrev_to_numeric_id: HashMap<parameter::Abbreviation, BTreeSet<NumericId>>,
+    pub(crate) abbrev_to_numeric_id: HashMap<Abbreviation, BTreeSet<NumericId>>,
 }
 
 #[derive(thiserror::Error, Debug, derive_more::Display)]
 #[display("{:?}, {:?}", _0.0, _0.1)]
 pub(crate) enum ParameterInsertionError {
-    NumericKeyAlreadyExists((NumericId, parameter::Parameter)),
+    NumericKeyAlreadyExists((NumericId, Parameter)),
 }
 
 // TODO: Consider if perhaps we should replace `AbbrevtoParameter` with
 // `Option<Vec(&'a NumericId, &'a Parameter)>`
 pub(crate) enum AbbrevToParameter<'a> {
-    Unique((&'a NumericId, &'a parameter::Parameter)),
-    Multiple(Vec<(&'a NumericId, &'a parameter::Parameter)>),
+    Unique((&'a NumericId, &'a Parameter)),
+    Multiple(Vec<(&'a NumericId, &'a Parameter)>),
     AbbrevNotFound,
 }
 
@@ -41,7 +41,7 @@ impl ParameterDatabase {
     pub(crate) fn insert(
         &mut self,
         numeric_id: NumericId,
-        parameter: parameter::Parameter,
+        parameter: Parameter,
     ) -> Result<(), ParameterInsertionError> {
         self.abbrev_to_numeric_id
             .entry(parameter.abbreviation.clone())
@@ -62,7 +62,7 @@ impl ParameterDatabase {
 
     pub(crate) fn abbreviation_to_parameter(
         &self,
-        abbreviation: &parameter::Abbreviation,
+        abbreviation: &Abbreviation,
     ) -> AbbrevToParameter {
         let numeric_ids = match self.abbrev_to_numeric_id.get(abbreviation) {
             None => return AbbrevToParameter::AbbrevNotFound,
@@ -85,10 +85,7 @@ impl ParameterDatabase {
         }
     }
 
-    pub(crate) fn numeric_id_to_parameter(
-        &self,
-        numeric_id: &NumericId,
-    ) -> Option<&parameter::Parameter> {
+    pub(crate) fn numeric_id_to_parameter(&self, numeric_id: &NumericId) -> Option<&Parameter> {
         self.numeric_id_to_params.get(numeric_id)
     }
 
@@ -100,21 +97,22 @@ impl ParameterDatabase {
 #[cfg(test)]
 mod test {
 
+    use crate::parameter::Status;
+
     use super::*;
-    use crate::{numeric_id::NumericId, parameter};
 
     #[test]
     fn insert_and_retrieve() -> anyhow::Result<()> {
         let numeric_id = NumericId::new(0, 0, 0, 0, 0, 0);
 
-        let abbreviation = parameter::Abbreviation("FOO".to_string());
+        let abbreviation = Abbreviation("FOO".to_string());
 
-        let param = parameter::Parameter {
+        let param = Parameter {
             description: "Foo".to_string(),
             note: "Bar".to_string(),
             unit: "K".to_string(),
             abbreviation: abbreviation.clone(),
-            status: parameter::Status::Operational,
+            status: Status::Operational,
         };
 
         let mut param_db = ParameterDatabase::new();
