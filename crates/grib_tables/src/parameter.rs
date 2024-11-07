@@ -16,8 +16,11 @@ impl NumericId {
     const ORIGINATING_CENTER_RIGHT_BYTE: u64 = 1;
     const LOCAL_TABLE_VERSION_BYTE: u64 = 0;
 
+    /// Create a new `NumericId`.
+    ///
     /// `originating_center` and `local_table_version` must be `u16::MAX` and `u8::MAX`
-    /// respectively for parameters which belong to the master table.
+    /// respectively for parameters which belong to the master table. This is consistent with
+    /// the GRIB spec, which uses `u16::MAX` and `u8::MAX` to indicate a missing value.
     ///
     /// The input parameters are positioned into a single `u64` as follows:
     /// (The right-most byte is byte 0):
@@ -30,10 +33,10 @@ impl NumericId {
     /// - Bytes 1 & 2: originating_center (u16)
     /// - Byte 0: local_table_version (u8)
     ///
-    /// In this way, we can get all parameters for a given category by getting a `range` from
-    /// the `BTreeMap` from
-    /// `0x00_<product_discipline>_<parameter_category>_00_00_00_00_00` to
-    /// `0x00_<product_discipline>_<parameter_category>_FF_FF_FF_FF_FF`
+    /// In this way, we can, for example, get all parameters for a given category by
+    /// getting a `range` from the `BTreeMap`
+    /// from `0x00_<product_discipline>_<parameter_category>_00_00_00_00_00`
+    /// to `0x00_<product_discipline>_<parameter_category>_FF_FF_FF_FF_FF`
     ///
     /// TODO: Passing in 6 ints is ugly and error-prone. Let's pass in a struct. Or use a builder
     /// pattern so the calling code can easily see which parameter is which!
