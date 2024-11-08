@@ -10,5 +10,7 @@ authors.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-derive_more = { version = "1.0.0", features = ["display"]}
-thiserror = "1.0.64"
+csv.workspace = true
+derive_more.workspace = true
+serde.workspace = true
+thiserror.workspace = true

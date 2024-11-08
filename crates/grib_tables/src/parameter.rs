@@ -1,5 +1,5 @@
-mod database;
-mod numeric_id;
+pub(crate) mod database;
+pub(crate) mod numeric_id;
 
 #[derive(Clone, Debug, derive_more::Display, PartialEq, Eq)]
 #[display("({}, {}, {})", abbrev, name, unit)]
