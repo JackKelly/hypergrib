@@ -59,25 +59,16 @@ impl ParameterDatabase {
     pub(crate) fn abbreviation_to_parameter(
         &self,
         abbreviation: &Abbreviation,
-    ) -> AbbrevToParameter {
-        let numeric_ids = match self.abbrev_to_numeric_id.get(abbreviation) {
-            None => return AbbrevToParameter::AbbrevNotFound,
-            Some(numeric_ids) => numeric_ids,
-        };
-        if numeric_ids.len() == 1 {
-            let numeric_id = numeric_ids.first().unwrap();
-            let param = self.numeric_id_to_param.get(&numeric_id).unwrap();
-            AbbrevToParameter::Unique((numeric_id, param))
-        } else {
-            AbbrevToParameter::Multiple(
-                numeric_ids
-                    .iter()
-                    .map(|numeric_id| {
-                        let param = self.numeric_id_to_param.get(numeric_id).unwrap();
-                        (numeric_id, param)
-                    })
-                    .collect(),
-            )
+    ) -> Vec<(&NumericId, &Parameter)> {
+        match self.abbrev_to_numeric_id.get(abbreviation) {
+            None => vec![],
+            Some(numeric_ids) => numeric_ids
+                .iter()
+                .map(|numeric_id| {
+                    let param = self.numeric_id_to_param.get(numeric_id).unwrap();
+                    (numeric_id, param)
+                })
+                .collect(),
         }
     }
 
@@ -97,14 +88,6 @@ pub(crate) enum ParameterInsertionError {
     NumericIdAlreadyExistsInNumericIdToParam((NumericId, Parameter)),
 }
 
-// TODO: Consider if perhaps we should replace `AbbrevtoParameter` with
-//       `Option<Vec(&'a NumericId, &'a Parameter)>` or just `Vec`.
-pub(crate) enum AbbrevToParameter<'a> {
-    Unique((&'a NumericId, &'a Parameter)),
-    Multiple(Vec<(&'a NumericId, &'a Parameter)>),
-    AbbrevNotFound,
-}
-
 #[cfg(test)]
 mod test {
 
@@ -116,13 +99,11 @@ mod test {
     fn insert_and_retrieve() -> anyhow::Result<()> {
         let numeric_id = NumericId::new(0, 0, 0, 0, 0, 0);
 
-        let abbreviation = Abbreviation("FOO".to_string());
-
         let param = Parameter {
             description: "Foo".to_string(),
             note: "Bar".to_string(),
             unit: "K".to_string(),
-            abbreviation: abbreviation.clone(),
+            abbreviation: Abbreviation("FOO".to_string()),
             status: Status::Operational,
         };
 
@@ -132,13 +113,11 @@ mod test {
         param_db.insert(numeric_id.clone(), param.clone())?;
         assert_eq!(param_db.len(), 1);
 
-        let retrieved_param = param_db.abbreviation_to_parameter(&param.abbreviation);
-
-        if let AbbrevToParameter::Unique((_, unique_param)) = retrieved_param {
-            assert_eq!(param, *unique_param);
-        } else {
-            panic!("Failed to map from abbrev to param");
-        }
+        let retrieved_params = param_db.abbreviation_to_parameter(&param.abbreviation);
+        assert_eq!(retrieved_params.len(), 1);
+        let (retrieved_numeric_id, unique_param) = retrieved_params.first().unwrap();
+        assert_eq!(&numeric_id, *retrieved_numeric_id);
+        assert_eq!(&param, *unique_param);
 
         Ok(())
     }
