@@ -19,14 +19,6 @@ Because part of the long-term vision for `hypergrib` is to make it easy to compa
 
 I'm aware of two existing GRIB readers in Rust (`gribberish` and `grib-rs`) but neither can decode `.idx` files, and neither have a full representation of the GRIB tables. Hence this crate existing! And I'm also keen for this crate to be stand-alone so it could be used by `gribberish` and/or `grib-rs` could use `grib_tables` as their GRIB table representation.
 
-## Cloning this repo
-
-This module uses [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to keep the relevant CSV files in this repo (inspired by `grib-rs`).
-
-When you clone this repo, pass the `--recurse-submodules` option to `git clone`.
-
-If you've already cloned this repo then run `git submodule update --init --recursive`
-
 ## Related
 
 - https://github.com/JackKelly/rust-playground/tree/main/grib_tables: A previous design sketch
