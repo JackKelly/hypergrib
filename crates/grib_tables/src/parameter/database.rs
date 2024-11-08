@@ -7,33 +7,19 @@ use super::{numeric_id::NumericId, Abbreviation, Parameter};
 use std::collections::BTreeMap;
 
 pub(crate) struct ParameterDatabase {
-    /// We use a `BTreeMap` so we can get, say, all the versions of a particular parameter_number
-    /// using BTreeMap.range.
-    pub(crate) numeric_id_to_params: BTreeMap<NumericId, Parameter>,
+    /// We use a `BTreeMap` so we can get, say, all the versions of a particular `parameter_number`
+    /// using `BTreeMap.range`.
+    numeric_id_to_param: BTreeMap<NumericId, Parameter>,
 
-    /// TODO: Empirically test if we actually need the value to be a BTreeSet (instead of just a
-    /// NumericId). In other words, check if any GRIB abbreviations map to multiple parameters.
-    pub(crate) abbrev_to_numeric_id: HashMap<Abbreviation, BTreeSet<NumericId>>,
-}
-
-#[derive(thiserror::Error, Debug, derive_more::Display)]
-#[display("{:?}, {:?}", _0.0, _0.1)]
-pub(crate) enum ParameterInsertionError {
-    NumericKeyAlreadyExists((NumericId, Parameter)),
-}
-
-// TODO: Consider if perhaps we should replace `AbbrevtoParameter` with
-// `Option<Vec(&'a NumericId, &'a Parameter)>`
-pub(crate) enum AbbrevToParameter<'a> {
-    Unique((&'a NumericId, &'a Parameter)),
-    Multiple(Vec<(&'a NumericId, &'a Parameter)>),
-    AbbrevNotFound,
+    // TODO: Empirically test if we actually need the value to be a `BTreeSet` (instead of just a
+    // `NumericId`). In other words, check if any GRIB abbreviations map to multiple parameters.
+    abbrev_to_numeric_id: HashMap<Abbreviation, BTreeSet<NumericId>>,
 }
 
 impl ParameterDatabase {
     pub(crate) fn new() -> Self {
         Self {
-            numeric_id_to_params: BTreeMap::new(),
+            numeric_id_to_param: BTreeMap::new(),
             abbrev_to_numeric_id: HashMap::new(),
         }
     }
@@ -43,21 +29,31 @@ impl ParameterDatabase {
         numeric_id: NumericId,
         parameter: Parameter,
     ) -> Result<(), ParameterInsertionError> {
+        // Insert into or modify `abbrev_to_numeric_id`:
+        let mut numeric_id_is_unique = true;
         self.abbrev_to_numeric_id
             .entry(parameter.abbreviation.clone())
             .and_modify(|set| {
-                set.insert(numeric_id);
+                numeric_id_is_unique = set.insert(numeric_id);
             })
             .or_insert(BTreeSet::from([numeric_id]));
+        if !numeric_id_is_unique {
+            return Err(
+                ParameterInsertionError::NumericIdAlreadyExistsInAbbrevToNumericId((
+                    numeric_id, parameter,
+                )),
+            );
+        };
 
-        if self.numeric_id_to_params.contains_key(&numeric_id) {
-            return Err(ParameterInsertionError::NumericKeyAlreadyExists((
-                numeric_id, parameter,
-            )));
+        // Insert into `numeric_id_to_param`:
+        match self.numeric_id_to_param.insert(numeric_id, parameter) {
+            None => Ok(()),
+            Some(old_param) => Err(
+                ParameterInsertionError::NumericIdAlreadyExistsInNumericIdToParam((
+                    numeric_id, old_param,
+                )),
+            ),
         }
-        let insert_option = self.numeric_id_to_params.insert(numeric_id, parameter);
-        assert!(insert_option.is_none(), "insertion into numeric_id_to_params should return None here because we test for `contains_key()` above.");
-        Ok(())
     }
 
     pub(crate) fn abbreviation_to_parameter(
@@ -70,14 +66,14 @@ impl ParameterDatabase {
         };
         if numeric_ids.len() == 1 {
             let numeric_id = numeric_ids.first().unwrap();
-            let param = self.numeric_id_to_params.get(&numeric_id).unwrap();
+            let param = self.numeric_id_to_param.get(&numeric_id).unwrap();
             AbbrevToParameter::Unique((numeric_id, param))
         } else {
             AbbrevToParameter::Multiple(
                 numeric_ids
                     .iter()
                     .map(|numeric_id| {
-                        let param = self.numeric_id_to_params.get(numeric_id).unwrap();
+                        let param = self.numeric_id_to_param.get(numeric_id).unwrap();
                         (numeric_id, param)
                     })
                     .collect(),
@@ -86,12 +82,27 @@ impl ParameterDatabase {
     }
 
     pub(crate) fn numeric_id_to_parameter(&self, numeric_id: &NumericId) -> Option<&Parameter> {
-        self.numeric_id_to_params.get(numeric_id)
+        self.numeric_id_to_param.get(numeric_id)
     }
 
     pub(crate) fn len(&self) -> usize {
-        self.numeric_id_to_params.len()
+        self.numeric_id_to_param.len()
     }
+}
+
+#[derive(thiserror::Error, Debug, derive_more::Display)]
+#[display("{:?}, {:?}", _0.0, _0.1)]
+pub(crate) enum ParameterInsertionError {
+    NumericIdAlreadyExistsInAbbrevToNumericId((NumericId, Parameter)),
+    NumericIdAlreadyExistsInNumericIdToParam((NumericId, Parameter)),
+}
+
+// TODO: Consider if perhaps we should replace `AbbrevtoParameter` with
+//       `Option<Vec(&'a NumericId, &'a Parameter)>` or just `Vec`.
+pub(crate) enum AbbrevToParameter<'a> {
+    Unique((&'a NumericId, &'a Parameter)),
+    Multiple(Vec<(&'a NumericId, &'a Parameter)>),
+    AbbrevNotFound,
 }
 
 #[cfg(test)]
