@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use std::collections::HashMap;
 
-use super::{numeric_id::NumericId, Abbreviation, Parameter};
+use super::{numeric_id::NumericId, Parameter, ShortName};
 
 use std::collections::BTreeMap;
 
@@ -13,7 +13,7 @@ pub(crate) struct ParameterDatabase {
 
     // TODO: Empirically test if we actually need the value to be a `BTreeSet` (instead of just a
     // `NumericId`). In other words, check if any GRIB abbreviations map to multiple parameters.
-    abbrev_to_numeric_id: HashMap<Abbreviation, BTreeSet<NumericId>>,
+    abbrev_to_numeric_id: HashMap<ShortName, BTreeSet<NumericId>>,
 }
 
 impl ParameterDatabase {
@@ -32,7 +32,7 @@ impl ParameterDatabase {
         // Insert into or modify `abbrev_to_numeric_id`:
         let mut numeric_id_is_unique = true;
         self.abbrev_to_numeric_id
-            .entry(parameter.abbreviation.clone())
+            .entry(parameter.short_name.clone())
             .and_modify(|set| {
                 numeric_id_is_unique = set.insert(numeric_id);
             })
@@ -58,7 +58,7 @@ impl ParameterDatabase {
 
     pub(crate) fn abbreviation_to_parameter(
         &self,
-        abbreviation: &Abbreviation,
+        abbreviation: &ShortName,
     ) -> Vec<(&NumericId, &Parameter)> {
         match self.abbrev_to_numeric_id.get(abbreviation) {
             None => vec![],
@@ -91,8 +91,6 @@ pub(crate) enum ParameterInsertionError {
 #[cfg(test)]
 mod test {
 
-    use crate::parameter::Status;
-
     use super::*;
 
     #[test]
@@ -100,11 +98,9 @@ mod test {
         let numeric_id = NumericId::new(0, 0, 0, 0, 0, 0);
 
         let param = Parameter {
-            description: "Foo".to_string(),
-            note: "Bar".to_string(),
+            short_name: ShortName("FOO".to_string()),
+            name: "Foo".to_string(),
             unit: "K".to_string(),
-            abbreviation: Abbreviation("FOO".to_string()),
-            status: Status::Operational,
         };
 
         let mut param_db = ParameterDatabase::new();
@@ -113,7 +109,7 @@ mod test {
         param_db.insert(numeric_id.clone(), param.clone())?;
         assert_eq!(param_db.len(), 1);
 
-        let retrieved_params = param_db.abbreviation_to_parameter(&param.abbreviation);
+        let retrieved_params = param_db.abbreviation_to_parameter(&param.short_name);
         assert_eq!(retrieved_params.len(), 1);
         let (retrieved_numeric_id, unique_param) = retrieved_params.first().unwrap();
         assert_eq!(&numeric_id, *retrieved_numeric_id);
