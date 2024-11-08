@@ -1,6 +1,0 @@
-[submodule "crates/grib_tables/submodules/wmo-im/CCT"]
-	path = crates/grib_tables/submodules/wmo-im/CCT
-	url = https://github.com/wmo-im/CCT
-[submodule "crates/grib_tables/submodules/wmo-im/GRIB2"]
-	path = crates/grib_tables/submodules/wmo-im/GRIB2
-	url = https://github.com/wmo-im/GRIB2

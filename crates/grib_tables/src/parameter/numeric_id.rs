@@ -5,13 +5,15 @@ const N_BITS_PER_BYTE: u64 = 8;
 /// The components of the numerical ID are positioned into a single `u64` as follows:
 /// (The right-most byte is byte 0):
 ///
-/// - Byte 7:      Zero (not used)       u8
-/// - Byte 6:      product_discipline    u8
-/// - Byte 5:      parameter_category    u8
-/// - Byte 4:      parameter_number      u8
-/// - Byte 3:      master_table_version  u8
-/// - Bytes 1 & 2: originating_center    u16
-/// - Byte 0:      local_table_version   u8
+/// | Byte  | Description          | dtype |     CSV file       |
+/// |-------|----------------------|-------|--------------------|
+/// | 7     | Zero (not used)      |  u8   |                    |
+/// | 6     | product_discipline   |  u8   |                    |
+/// | 5     | parameter_category   |  u8   |                    |
+/// | 4     | parameter_number     |  u8   |                    |
+/// | 3     | master_table_version |  u8   |                    |
+/// | 1 & 2 | originating_center   |  u16  | wmo-im/CCT/c11.csv |
+/// | 0     | local_table_version  |  u8   |                    |
 ///
 /// In this way, we can, for example, get all parameters for a given category by
 /// getting a `range` from the `BTreeMap`

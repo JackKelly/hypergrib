@@ -6,7 +6,7 @@ mod numeric_id;
 pub(crate) struct Parameter {
     pub(crate) description: String,
     pub(crate) note: String,
-    pub(crate) unit: String, // TODO: Maybe use a Unit enum?
+    pub(crate) unit: String, // TODO: Maybe use a Unit enum? Or load units from wmo-im/CCT/C06.csv?
     pub(crate) abbreviation: Abbreviation,
     pub(crate) status: Status,
 }
