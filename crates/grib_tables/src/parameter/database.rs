@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use std::collections::HashMap;
 
-use super::{numeric_id::NumericId, Parameter, ShortName};
+use super::{numeric_id::NumericId, Abbrev, Parameter};
 
 use std::collections::BTreeMap;
 
@@ -13,7 +13,7 @@ pub(crate) struct ParameterDatabase {
 
     // TODO: Empirically test if we actually need the value to be a `BTreeSet` (instead of just a
     // `NumericId`). In other words, check if any GRIB abbreviations map to multiple parameters.
-    abbrev_to_numeric_id: HashMap<ShortName, BTreeSet<NumericId>>,
+    abbrev_to_numeric_id: HashMap<Abbrev, BTreeSet<NumericId>>,
 }
 
 impl ParameterDatabase {
@@ -32,7 +32,7 @@ impl ParameterDatabase {
         // Insert into or modify `abbrev_to_numeric_id`:
         let mut numeric_id_is_unique = true;
         self.abbrev_to_numeric_id
-            .entry(parameter.short_name.clone())
+            .entry(parameter.abbrev.clone())
             .and_modify(|set| {
                 numeric_id_is_unique = set.insert(numeric_id);
             })
@@ -56,11 +56,8 @@ impl ParameterDatabase {
         }
     }
 
-    pub(crate) fn abbreviation_to_parameter(
-        &self,
-        abbreviation: &ShortName,
-    ) -> Vec<(&NumericId, &Parameter)> {
-        match self.abbrev_to_numeric_id.get(abbreviation) {
+    pub(crate) fn abbrev_to_parameter(&self, abbrev: &Abbrev) -> Vec<(&NumericId, &Parameter)> {
+        match self.abbrev_to_numeric_id.get(abbrev) {
             None => vec![],
             Some(numeric_ids) => numeric_ids
                 .iter()
@@ -98,7 +95,7 @@ mod test {
         let numeric_id = NumericId::new(0, 0, 0, 0, 0, 0);
 
         let param = Parameter {
-            short_name: ShortName("FOO".to_string()),
+            abbrev: Abbrev("FOO".to_string()),
             name: "Foo".to_string(),
             unit: "K".to_string(),
         };
@@ -109,7 +106,7 @@ mod test {
         param_db.insert(numeric_id.clone(), param.clone())?;
         assert_eq!(param_db.len(), 1);
 
-        let retrieved_params = param_db.abbreviation_to_parameter(&param.short_name);
+        let retrieved_params = param_db.abbrev_to_parameter(&param.abbrev);
         assert_eq!(retrieved_params.len(), 1);
         let (retrieved_numeric_id, unique_param) = retrieved_params.first().unwrap();
         assert_eq!(&numeric_id, *retrieved_numeric_id);
