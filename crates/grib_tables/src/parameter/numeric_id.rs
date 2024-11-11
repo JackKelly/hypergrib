@@ -1,5 +1,57 @@
 const N_BITS_PER_BYTE: u64 = 8;
 
+pub struct NumericIdBuilder {
+    product_discipline: u8,
+    parameter_category: u8,
+    parameter_number: u8,
+    master_table_version: u8,
+    originating_center: u16,
+    local_table_version: u8,
+}
+
+impl NumericIdBuilder {
+    pub(crate) fn new(
+        product_discipline: u8,
+        parameter_category: u8,
+        parameter_number: u8,
+    ) -> Self {
+        Self {
+            product_discipline,
+            parameter_category,
+            parameter_number,
+            master_table_version: u8::MAX,
+            originating_center: u16::MAX,
+            local_table_version: u8::MAX,
+        }
+    }
+
+    pub(crate) fn set_master_table_version(&mut self, master_table_version: u8) -> &Self {
+        self.master_table_version = master_table_version;
+        self
+    }
+
+    pub(crate) fn set_originating_center(&mut self, originating_center: u16) -> &Self {
+        self.originating_center = originating_center;
+        self
+    }
+
+    pub(crate) fn set_local_table_version(&mut self, local_table_version: u8) -> &Self {
+        self.local_table_version = local_table_version;
+        self
+    }
+
+    pub(crate) fn build(self) -> NumericId {
+        NumericId::new(
+            self.product_discipline,
+            self.parameter_category,
+            self.parameter_number,
+            self.master_table_version,
+            self.originating_center,
+            self.local_table_version,
+        )
+    }
+}
+
 /// `NumericId` stores the unique numerical identifier for each GRIB `Parameter` as a single `u64`.
 ///
 /// The components of the numerical ID are positioned into a single `u64` as follows:

@@ -1,31 +1,106 @@
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf, u8};
 
-use crate::parameter::{database::ParameterDatabase, Parameter};
+use csv::DeserializeRecordsIntoIter;
 
-struct GdalTable_4_2_Record {
-    subcat: u8,
-    short_name: String,
-    name: String,
-    unit: String,
+use crate::parameter::{
+    numeric_id::{NumericId, NumericIdBuilder},
+    Parameter,
+};
+
+#[derive(Debug, serde::Deserialize)]
+pub(crate) struct GdalTable4_2Record {
+    // This needs to be _signed_ because the first few lines of each GDAL CSV contains comments and
+    // have negative `subcat` numbers.
+    subcat: i16,
+    pub(crate) short_name: String,
+    pub(crate) name: String,
+    pub(crate) unit: String,
     unit_conv: String,
 }
 
-fn read_table_4_2(
-    parameter_db: &mut ParameterDatabase,
-    discipline: u8,
-    category: u8,
-) -> anyhow::Result<()> {
-    let filename = format!("grib2_table_4_2_{discipline}_{category}.csv");
-    let path = csv_path().join(filename);
-    let mut reader = csv::Reader::from_path(path);
-    for result in reader.deserialize() {
-        let record: Parameter = result?;
+pub(crate) struct GdalTable4_2Iter {
+    product_discipline: u8,
+    parameter_category: u8,
+    path: PathBuf,
+    deserializer: DeserializeRecordsIntoIter<File, GdalTable4_2Record>,
+}
+
+impl GdalTable4_2Iter {
+    fn new(product_discipline: u8, parameter_category: u8) -> anyhow::Result<Self> {
+        let filename = format!("grib2_table_4_2_{product_discipline}_{parameter_category}.csv");
+        let path = csv_path().join(filename);
+        let reader = csv::Reader::from_path(&path)?;
+        Ok(Self {
+            product_discipline,
+            parameter_category,
+            path,
+            deserializer: reader.into_deserialize(),
+        })
     }
-    Ok(())
+}
+
+impl Iterator for GdalTable4_2Iter {
+    type Item = (NumericId, Parameter);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(result) = self.deserializer.next() {
+            let record: GdalTable4_2Record = result.expect(
+                format!(
+                    "deserialize result into GdalTable4_2Record for file {:?}",
+                    self.path
+                )
+                .as_str(),
+            );
+
+            // Check if we need to skip this line
+            let lc_name = record.name.to_lowercase();
+            if record.subcat < 0 || lc_name.contains("reserved") || lc_name.contains("missing") {
+                continue;
+            };
+
+            // Process valid line:
+            let numeric_id = NumericIdBuilder::new(
+                self.product_discipline,
+                self.parameter_category,
+                record.subcat.try_into().expect("subcat should be a u8"),
+            )
+            .build();
+            let parameter = record.into();
+            return Some((numeric_id, parameter));
+        }
+        None
+    }
 }
 
 fn csv_path() -> PathBuf {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let manifest_dir = PathBuf::from(manifest_dir);
     manifest_dir.join("csv")
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_read_gdal_table_4_2() -> anyhow::Result<()> {
+        let iterator = GdalTable4_2Iter::new(0, 0)?;
+        let vec: Vec<_> = iterator.collect();
+        assert_eq!(vec.len(), 33);
+
+        // Check first row of data:
+        let (numeric_id, parameter) = &vec[0];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 0).build());
+        assert_eq!(parameter, &Parameter::new("TMP", "Temperature", "K"));
+
+        // Check last row of data:
+        let (numeric_id, parameter) = &vec[32];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 32).build());
+        assert_eq!(
+            parameter,
+            &Parameter::new("", "Wet-bulb potential temperature", "K")
+        );
+        Ok(())
+    }
 }
