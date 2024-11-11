@@ -18,58 +18,37 @@ pub(crate) struct GdalTable4_2Record {
     unit_conv: String,
 }
 
-pub(crate) struct GdalTable4_2Iter {
+fn gdal_table_4_2_iterator(
     product_discipline: u8,
     parameter_category: u8,
-    path: PathBuf,
-    deserializer: DeserializeRecordsIntoIter<File, GdalTable4_2Record>,
-}
+) -> anyhow::Result<impl Iterator<Item = (NumericId, Parameter)>> {
+    let filename = format!("grib2_table_4_2_{product_discipline}_{parameter_category}.csv");
+    let path = csv_path().join(filename);
+    let reader = csv::Reader::from_path(&path)?;
+    let deser_error_msg = format!(
+        "deserialize result into GdalTable4_2Record for file {:?}",
+        path
+    );
 
-impl GdalTable4_2Iter {
-    fn new(product_discipline: u8, parameter_category: u8) -> anyhow::Result<Self> {
-        let filename = format!("grib2_table_4_2_{product_discipline}_{parameter_category}.csv");
-        let path = csv_path().join(filename);
-        let reader = csv::Reader::from_path(&path)?;
-        Ok(Self {
-            product_discipline,
-            parameter_category,
-            path,
-            deserializer: reader.into_deserialize(),
-        })
-    }
-}
-
-impl Iterator for GdalTable4_2Iter {
-    type Item = (NumericId, Parameter);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        while let Some(result) = self.deserializer.next() {
-            let record: GdalTable4_2Record = result.expect(
-                format!(
-                    "deserialize result into GdalTable4_2Record for file {:?}",
-                    self.path
-                )
-                .as_str(),
-            );
-
-            // Check if we need to skip this line
+    let iter = reader
+        .into_deserialize()
+        .map(move |result| -> GdalTable4_2Record { result.expect(&deser_error_msg) })
+        .filter(|record| {
             let lc_name = record.name.to_lowercase();
-            if record.subcat < 0 || lc_name.contains("reserved") || lc_name.contains("missing") {
-                continue;
-            };
-
-            // Process valid line:
+            record.subcat >= 0 && !lc_name.contains("reserved") && !lc_name.contains("missing")
+        })
+        .map(move |record| {
             let numeric_id = NumericIdBuilder::new(
-                self.product_discipline,
-                self.parameter_category,
+                product_discipline,
+                parameter_category,
                 record.subcat.try_into().expect("subcat should be a u8"),
             )
             .build();
-            let parameter = record.into();
-            return Some((numeric_id, parameter));
-        }
-        None
-    }
+            let parameter: Parameter = record.into();
+            (numeric_id, parameter)
+        });
+
+    Ok(iter)
 }
 
 fn csv_path() -> PathBuf {
@@ -85,7 +64,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_0_0() -> anyhow::Result<()> {
-        let iterator = GdalTable4_2Iter::new(0, 0)?;
+        let iterator = gdal_table_4_2_iterator(0, 0)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 33);
 
@@ -114,7 +93,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_0_191() -> anyhow::Result<()> {
-        let iterator = GdalTable4_2Iter::new(0, 191)?;
+        let iterator = gdal_table_4_2_iterator(0, 191)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 4);
 
@@ -142,7 +121,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_10_0() -> anyhow::Result<()> {
-        let iterator = GdalTable4_2Iter::new(10, 0)?;
+        let iterator = gdal_table_4_2_iterator(10, 0)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 74);
 
