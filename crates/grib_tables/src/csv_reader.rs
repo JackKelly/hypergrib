@@ -1,54 +1,71 @@
-use std::{fs::File, path::PathBuf, u8};
-
-use csv::DeserializeRecordsIntoIter;
+use std::path::PathBuf;
 
 use crate::parameter::{
     numeric_id::{NumericId, NumericIdBuilder},
     Parameter,
 };
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub(crate) struct GdalTable4_2Record {
+    #[serde(default)]
+    prod: Option<u8>,
+
+    #[serde(default)]
+    cat: Option<u8>,
+
     // This needs to be _signed_ because the first few lines of each GDAL CSV contains comments and
     // have negative `subcat` numbers.
     subcat: i16,
+
     pub(crate) short_name: String,
     pub(crate) name: String,
     pub(crate) unit: String,
     unit_conv: String,
 }
 
+impl Into<(NumericId, Parameter)> for GdalTable4_2Record {
+    fn into(self) -> (NumericId, Parameter) {
+        let numeric_id = NumericIdBuilder::new(
+            self.prod.unwrap(),
+            self.cat.unwrap(),
+            self.subcat.try_into().expect("subcat must be a u8"),
+        )
+        .build();
+        let parameter = self.into();
+        (numeric_id, parameter)
+    }
+}
+
 fn gdal_table_4_2_iterator(
-    product_discipline: u8,
-    parameter_category: u8,
-) -> anyhow::Result<impl Iterator<Item = (NumericId, Parameter)>> {
-    let filename = format!("grib2_table_4_2_{product_discipline}_{parameter_category}.csv");
-    let path = csv_path().join(filename);
-    let reader = csv::Reader::from_path(&path)?;
+    path: &PathBuf,
+) -> anyhow::Result<impl Iterator<Item = GdalTable4_2Record>> {
+    let reader = csv::Reader::from_path(path)?;
     let deser_error_msg = format!(
         "deserialize result into GdalTable4_2Record for file {:?}",
         path
     );
-
     let iter = reader
         .into_deserialize()
         .map(move |result| -> GdalTable4_2Record { result.expect(&deser_error_msg) })
         .filter(|record| {
             let lc_name = record.name.to_lowercase();
             record.subcat >= 0 && !lc_name.contains("reserved") && !lc_name.contains("missing")
-        })
-        .map(move |record| {
-            let numeric_id = NumericIdBuilder::new(
-                product_discipline,
-                parameter_category,
-                record.subcat.try_into().expect("subcat should be a u8"),
-            )
-            .build();
-            let parameter: Parameter = record.into();
-            (numeric_id, parameter)
         });
-
     Ok(iter)
+}
+
+pub(crate) fn gdal_table_4_2_master(
+    product_discipline: u8,
+    parameter_category: u8,
+) -> anyhow::Result<impl Iterator<Item = (NumericId, Parameter)>> {
+    let filename = format!("grib2_table_4_2_{product_discipline}_{parameter_category}.csv");
+    let path = csv_path().join(filename);
+    let iter = gdal_table_4_2_iterator(&path)?;
+    Ok(iter.map(move |mut record| {
+        record.prod = record.prod.or(Some(product_discipline));
+        record.cat = record.cat.or(Some(parameter_category));
+        record.into()
+    }))
 }
 
 fn csv_path() -> PathBuf {
@@ -64,7 +81,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_0_0() -> anyhow::Result<()> {
-        let iterator = gdal_table_4_2_iterator(0, 0)?;
+        let iterator = gdal_table_4_2_master(0, 0)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 33);
 
@@ -93,7 +110,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_0_191() -> anyhow::Result<()> {
-        let iterator = gdal_table_4_2_iterator(0, 191)?;
+        let iterator = gdal_table_4_2_master(0, 191)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 4);
 
@@ -121,7 +138,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_10_0() -> anyhow::Result<()> {
-        let iterator = gdal_table_4_2_iterator(10, 0)?;
+        let iterator = gdal_table_4_2_master(10, 0)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 74);
 
@@ -137,6 +154,26 @@ mod test {
             parameter,
             &Parameter::new("", "Whitecap fraction", "fraction")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_gdal_table_4_2_local_NCEP() -> anyhow::Result<()> {
+        let path = csv_path().join("grib2_table_4_2_local_NCEP.csv");
+        let iterator = gdal_table_4_2_iterator(&path)?;
+        let vec: Vec<_> = iterator
+            .map(|record| -> (NumericId, Parameter) { record.into() })
+            .collect();
+        assert_eq!(vec.len(), 391);
+
+        // Check first row of data:
+        let (numeric_id, parameter) = &vec[0];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 192).build());
+        assert_eq!(
+            parameter,
+            &Parameter::new("SNOHF", "Snow Phase Change Heat Flux", "W/(m^2)")
+        );
+
         Ok(())
     }
 }
