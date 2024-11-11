@@ -84,7 +84,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_read_gdal_table_4_2() -> anyhow::Result<()> {
+    fn test_read_gdal_table_4_2_0_0() -> anyhow::Result<()> {
         let iterator = GdalTable4_2Iter::new(0, 0)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 33);
@@ -94,12 +94,69 @@ mod test {
         assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 0).build());
         assert_eq!(parameter, &Parameter::new("TMP", "Temperature", "K"));
 
+        // Check middle row of data:
+        let (numeric_id, parameter) = &vec[16];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 16).build());
+        assert_eq!(
+            parameter,
+            &Parameter::new("SNOHF", "Snow phase change heat flux", "W/m^2")
+        );
+
         // Check last row of data:
         let (numeric_id, parameter) = &vec[32];
         assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 32).build());
         assert_eq!(
             parameter,
             &Parameter::new("", "Wet-bulb potential temperature", "K")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_gdal_table_4_2_0_191() -> anyhow::Result<()> {
+        let iterator = GdalTable4_2Iter::new(0, 191)?;
+        let vec: Vec<_> = iterator.collect();
+        assert_eq!(vec.len(), 4);
+
+        // Check first row of data:
+        let (numeric_id, parameter) = &vec[0];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 191, 0).build());
+        assert_eq!(
+            parameter,
+            &Parameter::new(
+                "TSEC",
+                "Seconds prior to initial reference time (defined in Section 1)",
+                "s"
+            )
+        );
+
+        // Check last row of data:
+        let (numeric_id, parameter) = &vec[3];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 191, 3).build());
+        assert_eq!(
+            parameter,
+            &Parameter::new("DSLOBS", "Days Since Last Observation", "d")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_gdal_table_4_2_10_0() -> anyhow::Result<()> {
+        let iterator = GdalTable4_2Iter::new(10, 0)?;
+        let vec: Vec<_> = iterator.collect();
+        assert_eq!(vec.len(), 74);
+
+        // Check first row of data:
+        let (numeric_id, parameter) = &vec[0];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(10, 0, 0).build());
+        assert_eq!(parameter, &Parameter::new("WVSP1", "Wave spectra (1)", "-"));
+
+        // Check last row of data:
+        let (numeric_id, parameter) = &vec[73];
+        assert_eq!(numeric_id, &NumericIdBuilder::new(10, 0, 73).build());
+        assert_eq!(
+            parameter,
+            &Parameter::new("", "Whitecap fraction", "fraction")
         );
         Ok(())
     }

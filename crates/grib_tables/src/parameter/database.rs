@@ -24,19 +24,14 @@ impl ParameterDatabase {
         }
     }
 
+    /// Silently skips insertion into `abbrev_to_numeric_id` if abbrev = "".
     pub(crate) fn insert(
         &mut self,
         numeric_id: NumericId,
         parameter: Parameter,
     ) -> Result<(), ParameterInsertionError> {
-        // Insert into or modify `abbrev_to_numeric_id`:
-        let mut numeric_id_is_unique = true;
-        self.abbrev_to_numeric_id
-            .entry(parameter.abbrev.clone())
-            .and_modify(|set| {
-                numeric_id_is_unique = set.insert(numeric_id);
-            })
-            .or_insert(BTreeSet::from([numeric_id]));
+        // Update abbrev_to_numeric_id:
+        let numeric_id_is_unique = self.update_abbrev_to_numeric_id(numeric_id, &parameter);
         if !numeric_id_is_unique {
             return Err(
                 ParameterInsertionError::NumericIdAlreadyExistsInAbbrevToNumericId((
@@ -44,7 +39,6 @@ impl ParameterDatabase {
                 )),
             );
         };
-
         // Insert into `numeric_id_to_param`:
         match self.numeric_id_to_param.insert(numeric_id, parameter) {
             None => Ok(()),
@@ -54,6 +48,27 @@ impl ParameterDatabase {
                 )),
             ),
         }
+    }
+
+    /// Returns true if `numeric_id` is unique within the set of `numeric_id`s associated with
+    /// `parameter.abbrev`.
+    ///
+    /// If `parameter.abbrev` == "" then silently skips insertion into `abbrev_to_numeric_id` and returns true.
+    fn update_abbrev_to_numeric_id(
+        &mut self,
+        numeric_id: NumericId,
+        parameter: &Parameter,
+    ) -> bool {
+        let mut numeric_id_is_unique = true;
+        if parameter.abbrev.0 != "" {
+            self.abbrev_to_numeric_id
+                .entry(parameter.abbrev.clone())
+                .and_modify(|set| {
+                    numeric_id_is_unique = set.insert(numeric_id);
+                })
+                .or_insert(BTreeSet::from([numeric_id]));
+        }
+        numeric_id_is_unique
     }
 
     pub(crate) fn abbrev_to_parameter(&self, abbrev: &Abbrev) -> Vec<(&NumericId, &Parameter)> {
