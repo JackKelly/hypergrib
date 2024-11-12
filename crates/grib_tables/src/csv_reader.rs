@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use crate::parameter::{
+    database::ParameterDatabase,
     numeric_id::{NumericId, NumericIdBuilder},
     Abbrev, Parameter,
 };
@@ -91,9 +92,51 @@ fn csv_path() -> PathBuf {
     manifest_dir.join("csv")
 }
 
-fn list_gdal_master_table_4_2_csv_files() -> Result<glob::Paths, glob::PatternError> {
-    let path = csv_path().join("grib2_table_4_2_[0-9]*.csv");
+fn list_gdal_table_4_2_csv_files() -> Result<glob::Paths, glob::PatternError> {
+    let path = csv_path().join("grib2_table_4_2_*.csv");
     glob::glob(path.to_str().expect("path to str"))
+}
+
+fn get_populated_param_database() -> anyhow::Result<ParameterDatabase> {
+    let mut param_db = ParameterDatabase::new();
+
+    // Load master tables.
+    let re_master_table =
+        regex::Regex::new(r"^grib2_table_4_2_(?<discipline>\d{1,2})_(?<category>\d{1,3})$")
+            .unwrap();
+    let re_local_table = regex::Regex::new(r"^grib2_table_4_2_local_[A-Z][A-Za-z]+$").unwrap();
+    for path in list_gdal_table_4_2_csv_files()? {
+        let path = path?;
+        let file_stem = path
+            .file_stem()
+            .expect("file_stem")
+            .to_str()
+            .expect("file_stem to str");
+        // grib2_table_4_2_local_HPC.csv doesn't appear to contain useful info for us.
+        if file_stem == "grib2_table_4_2_local_HPC" {
+            continue;
+        }
+        if let Some(captures) = re_master_table.captures(file_stem) {
+            let discipline = (&captures["discipline"]).parse().expect("parse discipline");
+            let category = (&captures["category"]).parse().expect("parse category");
+            for record in gdal_master_table_4_2_iterator(discipline, category)? {
+                let (numeric_id, parameter) = record;
+                param_db.insert(numeric_id, parameter)?;
+            }
+        } else if re_local_table.is_match(file_stem) {
+            for record in gdal_table_4_2_iterator(&path)? {
+                let (numeric_id, parameter) = record.into();
+                param_db.insert(numeric_id, parameter)?;
+            }
+        } else {
+            return Err(anyhow::format_err!(
+                "Failed to interpret CSV filename {:?} with stem {:?}!",
+                path,
+                file_stem
+            ));
+        }
+    }
+    Ok(param_db)
 }
 
 #[cfg(test)]
@@ -201,8 +244,15 @@ mod test {
 
     #[test]
     fn test_list_gdal_master_table_4_2_csv_files() -> anyhow::Result<()> {
-        let filenames: Vec<_> = list_gdal_master_table_4_2_csv_files()?.collect();
-        assert_eq!(filenames.len(), 54);
+        let filenames: Vec<_> = list_gdal_table_4_2_csv_files()?.collect();
+        assert_eq!(filenames.len(), 60);
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_populated_param_database() -> anyhow::Result<()> {
+        let param_db = get_populated_param_database()?;
+        // TODO: Do something with database!
         Ok(())
     }
 }

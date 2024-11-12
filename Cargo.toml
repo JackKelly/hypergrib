@@ -22,6 +22,7 @@ gribberish = { git = "https://github.com/mpiannucci/gribberish.git" }
 glob = "0.3"
 indicatif = "0.17"  # progress bars etc.
 object_store = "0.11"
+regex = "1.11"
 serde = { version = "1.0", features = ["serde_derive"] }
 thiserror = "2.0"
 tokio = { version = "1.41", features = ["rt-multi-thread"]}
