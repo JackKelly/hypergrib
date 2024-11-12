@@ -15,8 +15,8 @@ pub(crate) struct GdalTable4_2Record {
     #[serde(default)]
     cat: Option<u8>,
 
-    /// This needs to be _signed_ because the first few lines of each GDAL CSV contains comments and
-    /// have negative `subcat` numbers.
+    /// This needs to be _signed_ because the first few lines of each
+    /// GDAL CSV contains comments and have negative `subcat` numbers.
     subcat: i16,
 
     pub(crate) short_name: String,
@@ -24,15 +24,10 @@ pub(crate) struct GdalTable4_2Record {
     pub(crate) unit: String,
 }
 
-impl Into<(NumericId, Parameter)> for GdalTable4_2Record {
-    fn into(self) -> (NumericId, Parameter) {
-        let numeric_id = NumericIdBuilder::new(
-            self.prod.unwrap(),
-            self.cat.unwrap(),
-            self.subcat.try_into().expect("subcat must be a u8"),
-        )
-        .build();
-        let parameter = self.into();
+impl From<GdalTable4_2Record> for (NumericId, Parameter) {
+    fn from(record: GdalTable4_2Record) -> Self {
+        let numeric_id = (&record).into();
+        let parameter = record.into();
         (numeric_id, parameter)
     }
 }
@@ -47,6 +42,17 @@ impl From<GdalTable4_2Record> for Parameter {
     }
 }
 
+impl From<&GdalTable4_2Record> for NumericId {
+    fn from(record: &GdalTable4_2Record) -> Self {
+        NumericIdBuilder::new(
+            record.prod.unwrap(),
+            record.cat.unwrap(),
+            record.subcat.try_into().expect("subcat must be a u8"),
+        )
+        .build()
+    }
+}
+
 fn gdal_table_4_2_iterator(
     path: &PathBuf,
 ) -> anyhow::Result<impl Iterator<Item = GdalTable4_2Record>> {
@@ -57,7 +63,7 @@ fn gdal_table_4_2_iterator(
     );
     let iter = reader
         .into_deserialize()
-        .map(move |result| -> GdalTable4_2Record { result.expect(&deser_error_msg) })
+        .map(move |row| -> GdalTable4_2Record { row.expect(&deser_error_msg) })
         .filter(|record| {
             let lc_name = record.name.to_lowercase();
             record.subcat >= 0 && !lc_name.contains("reserved") && !lc_name.contains("missing")
