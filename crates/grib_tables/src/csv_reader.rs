@@ -79,8 +79,8 @@ pub(crate) fn gdal_table_4_2_master(
     let path = csv_path().join(filename);
     let iter = gdal_table_4_2_iterator(&path)?;
     Ok(iter.map(move |mut record| {
-        record.prod = record.prod.or(Some(product_discipline));
-        record.cat = record.cat.or(Some(parameter_category));
+        record.prod = Some(product_discipline);
+        record.cat = Some(parameter_category);
         record.into()
     }))
 }
