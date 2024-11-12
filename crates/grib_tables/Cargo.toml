@@ -12,5 +12,6 @@ authors.workspace = true
 anyhow.workspace = true
 csv.workspace = true
 derive_more.workspace = true
+glob.workspace = true
 serde.workspace = true
 thiserror.workspace = true

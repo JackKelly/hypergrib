@@ -71,7 +71,7 @@ fn gdal_table_4_2_iterator(
     Ok(iter)
 }
 
-pub(crate) fn gdal_table_4_2_master(
+pub(crate) fn gdal_master_table_4_2_iterator(
     product_discipline: u8,
     parameter_category: u8,
 ) -> anyhow::Result<impl Iterator<Item = (NumericId, Parameter)>> {
@@ -91,6 +91,11 @@ fn csv_path() -> PathBuf {
     manifest_dir.join("csv")
 }
 
+fn list_gdal_master_table_4_2_csv_files() -> Result<glob::Paths, glob::PatternError> {
+    let path = csv_path().join("grib2_table_4_2_[0-9]*.csv");
+    glob::glob(path.to_str().expect("path to str"))
+}
+
 #[cfg(test)]
 mod test {
 
@@ -98,7 +103,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_0_0() -> anyhow::Result<()> {
-        let iterator = gdal_table_4_2_master(0, 0)?;
+        let iterator = gdal_master_table_4_2_iterator(0, 0)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 33);
 
@@ -127,7 +132,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_0_191() -> anyhow::Result<()> {
-        let iterator = gdal_table_4_2_master(0, 191)?;
+        let iterator = gdal_master_table_4_2_iterator(0, 191)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 4);
 
@@ -155,7 +160,7 @@ mod test {
 
     #[test]
     fn test_read_gdal_table_4_2_10_0() -> anyhow::Result<()> {
-        let iterator = gdal_table_4_2_master(10, 0)?;
+        let iterator = gdal_master_table_4_2_iterator(10, 0)?;
         let vec: Vec<_> = iterator.collect();
         assert_eq!(vec.len(), 74);
 
@@ -191,6 +196,13 @@ mod test {
             &Parameter::new("SNOHF", "Snow Phase Change Heat Flux", "W/(m^2)")
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_list_gdal_master_table_4_2_csv_files() -> anyhow::Result<()> {
+        let filenames: Vec<_> = list_gdal_master_table_4_2_csv_files()?.collect();
+        assert_eq!(filenames.len(), 54);
         Ok(())
     }
 }
