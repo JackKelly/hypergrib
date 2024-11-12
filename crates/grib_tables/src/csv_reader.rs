@@ -2,25 +2,26 @@ use std::path::PathBuf;
 
 use crate::parameter::{
     numeric_id::{NumericId, NumericIdBuilder},
-    Parameter,
+    Abbrev, Parameter,
 };
 
 #[derive(Debug, serde::Deserialize, Clone)]
 pub(crate) struct GdalTable4_2Record {
+    /// `prod` is present in the _local_ GDAL CSVs, but not the _master_ CSVs.
     #[serde(default)]
     prod: Option<u8>,
 
+    /// `cat` is present in the _local_ GDAL CSVs, but not the _master_ CSVs.
     #[serde(default)]
     cat: Option<u8>,
 
-    // This needs to be _signed_ because the first few lines of each GDAL CSV contains comments and
-    // have negative `subcat` numbers.
+    /// This needs to be _signed_ because the first few lines of each GDAL CSV contains comments and
+    /// have negative `subcat` numbers.
     subcat: i16,
 
     pub(crate) short_name: String,
     pub(crate) name: String,
     pub(crate) unit: String,
-    unit_conv: String,
 }
 
 impl Into<(NumericId, Parameter)> for GdalTable4_2Record {
@@ -33,6 +34,16 @@ impl Into<(NumericId, Parameter)> for GdalTable4_2Record {
         .build();
         let parameter = self.into();
         (numeric_id, parameter)
+    }
+}
+
+impl From<GdalTable4_2Record> for Parameter {
+    fn from(record: GdalTable4_2Record) -> Self {
+        Self {
+            abbrev: Abbrev(record.short_name),
+            name: record.name,
+            unit: record.unit,
+        }
     }
 }
 

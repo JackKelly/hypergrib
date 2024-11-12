@@ -1,5 +1,3 @@
-use crate::csv_reader::GdalTable4_2Record;
-
 pub(crate) mod database;
 pub(crate) mod numeric_id;
 
@@ -23,16 +21,6 @@ impl Parameter {
             abbrev: Abbrev(abbrev.to_string()),
             name: name.to_string(),
             unit: unit.to_string(),
-        }
-    }
-}
-
-impl From<GdalTable4_2Record> for Parameter {
-    fn from(record: GdalTable4_2Record) -> Self {
-        Self {
-            abbrev: Abbrev(record.short_name),
-            name: record.name,
-            unit: record.unit,
         }
     }
 }
