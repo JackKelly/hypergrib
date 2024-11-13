@@ -336,7 +336,8 @@ mod test {
         assert_eq!(temperature_numeric_id.subcenter(), u8::MAX);
         assert_eq!(temperature_numeric_id.local_table_version(), u8::MAX);
 
-        // TODO: Do something with database!
+        // TODO: Test some local parameters.
+        // TODO: Look for duplicate abbreviations.
         Ok(())
     }
 
