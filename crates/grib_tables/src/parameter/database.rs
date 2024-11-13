@@ -105,11 +105,13 @@ pub(crate) enum ParameterInsertionError {
 #[cfg(test)]
 mod test {
 
+    use crate::parameter::numeric_id::NumericIdBuilder;
+
     use super::*;
 
     #[test]
     fn insert_and_retrieve() -> anyhow::Result<()> {
-        let numeric_id = NumericId::new(0, 0, 0, 0, 0, 0);
+        let numeric_id = NumericIdBuilder::new(0, 0, 0).build();
 
         let param = Parameter {
             abbrev: Abbrev("FOO".to_string()),

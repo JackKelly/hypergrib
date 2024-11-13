@@ -8,6 +8,7 @@ pub struct NumericIdBuilder {
     parameter_number: u8,
     master_table_version: u8,
     originating_center: u16,
+    subcenter: u8,
     local_table_version: u8,
 }
 
@@ -23,6 +24,7 @@ impl NumericIdBuilder {
             parameter_number,
             master_table_version: u8::MAX,
             originating_center: u16::MAX,
+            subcenter: u8::MAX,
             local_table_version: u8::MAX,
         }
     }
@@ -37,6 +39,10 @@ impl NumericIdBuilder {
         self
     }
 
+    pub(crate) fn set_subcenter(&mut self, subcenter: u8) -> &Self {
+        self.subcenter = subcenter;
+        self
+    }
     pub(crate) fn set_local_table_version(&mut self, local_table_version: u8) -> &Self {
         self.local_table_version = local_table_version;
         self
@@ -49,6 +55,7 @@ impl NumericIdBuilder {
             self.parameter_number,
             self.master_table_version,
             self.originating_center,
+            self.subcenter,
             self.local_table_version,
         )
     }
@@ -59,15 +66,18 @@ impl NumericIdBuilder {
 /// The components of the numerical ID are positioned into a single `u64` as follows:
 /// (The right-most byte is byte 0):
 ///
-/// | Byte  | Description          | dtype |     CSV file       |
-/// |-------|----------------------|-------|--------------------|
-/// | 7     | Zero (not used)      |  u8   |                    |
-/// | 6     | product_discipline   |  u8   |                    |
-/// | 5     | parameter_category   |  u8   |                    |
-/// | 4     | parameter_number     |  u8   |                    |
-/// | 3     | master_table_version |  u8   |                    |
-/// | 1 & 2 | originating_center   |  u16  | wmo-im/CCT/c11.csv |
-/// | 0     | local_table_version  |  u8   |                    |
+/// | Byte  | Description          | dtype |         CSV file            |
+/// |-------|----------------------|-------|-----------------------------|
+/// | 7     | product_discipline   |  u8   |                             |
+/// | 6     | parameter_category   |  u8   |                             |
+/// | 5     | parameter_number     |  u8   |                             |
+/// | 4     | master_table_version |  u8   | grib2_table_versions        |
+/// | 3 & 2 | originating_center   |  u16  | grib2_center                |
+/// | 1     | subcenter            |  u8*  | grib2_table_4_2_local_index |
+/// | 0     | local_table_version  |  u8   |                             |
+///
+/// *Note that the GRIB spec says that the subcenter should be u16. But we are not aware of any
+/// subcenters above 255. And NumericId's u64 doesn't have space to a u16 subcenter!
 ///
 /// In this way, we can, for example, get all parameters for a given category by
 /// getting a `range` from the `BTreeMap`
@@ -80,12 +90,13 @@ impl NumericIdBuilder {
 pub struct NumericId(u64);
 
 impl NumericId {
-    const PRODUCT_DISCIPLINE_BYTE: u64 = 6;
-    const PARAMETER_CATEGORY_BYTE: u64 = 5;
-    const PARAMETER_NUMBER_BYTE: u64 = 4;
-    const MASTER_TABLE_VERSION_BYTE: u64 = 3;
-    const ORIGINATING_CENTER_LEFT_BYTE: u64 = 2;
-    const ORIGINATING_CENTER_RIGHT_BYTE: u64 = 1;
+    const PRODUCT_DISCIPLINE_BYTE: u64 = 7;
+    const PARAMETER_CATEGORY_BYTE: u64 = 6;
+    const PARAMETER_NUMBER_BYTE: u64 = 5;
+    const MASTER_TABLE_VERSION_BYTE: u64 = 4;
+    const ORIGINATING_CENTER_LEFT_BYTE: u64 = 3;
+    const ORIGINATING_CENTER_RIGHT_BYTE: u64 = 2;
+    const SUBCENTER_BYTE: u64 = 1;
     const LOCAL_TABLE_VERSION_BYTE: u64 = 0;
 
     /// Create a new `NumericId`.
@@ -102,6 +113,7 @@ impl NumericId {
         parameter_number: u8,
         master_table_version: u8,
         originating_center: u16,
+        subcenter: u8,
         local_table_version: u8,
     ) -> Self {
         let numeric_id = shift_left_by_n_bytes(product_discipline, Self::PRODUCT_DISCIPLINE_BYTE)
@@ -109,6 +121,7 @@ impl NumericId {
             | shift_left_by_n_bytes(parameter_number, Self::PARAMETER_NUMBER_BYTE)
             | shift_left_by_n_bytes(master_table_version, Self::MASTER_TABLE_VERSION_BYTE)
             | shift_left_by_n_bytes(originating_center, Self::ORIGINATING_CENTER_RIGHT_BYTE)
+            | shift_left_by_n_bytes(subcenter, Self::SUBCENTER_BYTE)
             | (local_table_version as u64);
         Self(numeric_id)
     }
@@ -135,6 +148,10 @@ impl NumericId {
         (left << N_BITS_PER_BYTE) | right
     }
 
+    pub fn subcenter(&self) -> u8 {
+        self.extract_nth_byte(Self::SUBCENTER_BYTE)
+    }
+
     pub fn local_table_version(&self) -> u8 {
         self.extract_nth_byte(Self::LOCAL_TABLE_VERSION_BYTE)
     }
@@ -157,12 +174,14 @@ impl fmt::Debug for NumericId {
         write!(
             f,
             "NumericId(discipline={}, category={}, parameter_number={}, \
-                master_table_version={}, originating_center={}, local_table_version={}, u64 encoding={})",
+                master_table_version={}, originating_center={}, subcenter={}, \
+                local_table_version={}, u64 encoding={})",
             self.product_discipline(),
             self.parameter_category(),
             self.parameter_number(),
             self.master_table_version(),
             self.originating_center(),
+            self.subcenter(),
             self.local_table_version(),
             self.0,
         )
@@ -215,12 +234,13 @@ mod test {
 
     #[test]
     fn test_numeric_id() {
-        let numeric_id = NumericId::new(0, 1, 2, 3, 400, 5);
+        let numeric_id = NumericId::new(0, 1, 2, 3, 400, 20, 5);
         assert_eq!(numeric_id.product_discipline(), 0);
         assert_eq!(numeric_id.parameter_category(), 1);
         assert_eq!(numeric_id.parameter_number(), 2);
         assert_eq!(numeric_id.master_table_version(), 3);
         assert_eq!(numeric_id.originating_center(), 400);
+        assert_eq!(numeric_id.subcenter(), 20);
         assert_eq!(numeric_id.local_table_version(), 5);
     }
 }
