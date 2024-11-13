@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::fmt::Write;
 
 use std::collections::HashMap;
 
@@ -22,6 +23,31 @@ impl ParameterDatabase {
             numeric_id_to_param: BTreeMap::new(),
             abbrev_to_numeric_id: HashMap::new(),
         }
+    }
+
+    pub(crate) fn abbrev_to_parameter(&self, abbrev: &Abbrev) -> Vec<(&NumericId, &Parameter)> {
+        match self.abbrev_to_numeric_id.get(abbrev) {
+            None => vec![],
+            Some(numeric_ids) => numeric_ids
+                .iter()
+                .map(|numeric_id| {
+                    let param = self.numeric_id_to_param.get(numeric_id).unwrap();
+                    (numeric_id, param)
+                })
+                .collect(),
+        }
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.numeric_id_to_param.len()
+    }
+
+    pub(crate) fn numeric_id_to_param(&self) -> &BTreeMap<NumericId, Parameter> {
+        &self.numeric_id_to_param
+    }
+
+    pub(crate) fn abbrev_to_numeric_id(&self) -> &HashMap<Abbrev, BTreeSet<NumericId>> {
+        &self.abbrev_to_numeric_id
     }
 
     /// Silently skips insertion into `abbrev_to_numeric_id` if abbrev = "".
@@ -50,6 +76,35 @@ impl ParameterDatabase {
         }
     }
 
+    pub fn describe_all_duplicate_abbrevs(&self) -> String {
+        let mut s = String::new();
+        for (abbrev, set_of_numeric_ids) in self.abbrev_to_numeric_id.iter() {
+            if set_of_numeric_ids.len() > 1 {
+                let params_info: Vec<_> = set_of_numeric_ids
+                    .into_iter()
+                    .map(|numeric_id| {
+                        let param = self.numeric_id_to_param.get(&numeric_id).unwrap();
+                        format!(
+                        "name={}, unit={}. discipline={}, cat={}, num={}, center={}, subcenter={}",
+                        param.name,
+                        param.unit,
+                        numeric_id.product_discipline(),
+                        numeric_id.parameter_category(),
+                        numeric_id.parameter_number(),
+                        numeric_id.originating_center(),
+                        numeric_id.subcenter(),
+                    )
+                    })
+                    .collect();
+                writeln!(s, "{abbrev}: {} numeric_ids:", set_of_numeric_ids.len()).expect("write");
+                for param_info in params_info.iter() {
+                    writeln!(s, "    {param_info}").expect("write");
+                }
+            }
+        }
+        s
+    }
+
     /// Returns true if `numeric_id` is unique within the set of `numeric_id`s associated with
     /// `parameter.abbrev`.
     ///
@@ -69,27 +124,6 @@ impl ParameterDatabase {
                 .or_insert(BTreeSet::from([numeric_id]));
         }
         numeric_id_is_unique
-    }
-
-    pub(crate) fn abbrev_to_parameter(&self, abbrev: &Abbrev) -> Vec<(&NumericId, &Parameter)> {
-        match self.abbrev_to_numeric_id.get(abbrev) {
-            None => vec![],
-            Some(numeric_ids) => numeric_ids
-                .iter()
-                .map(|numeric_id| {
-                    let param = self.numeric_id_to_param.get(numeric_id).unwrap();
-                    (numeric_id, param)
-                })
-                .collect(),
-        }
-    }
-
-    pub(crate) fn numeric_id_to_parameter(&self, numeric_id: &NumericId) -> Option<&Parameter> {
-        self.numeric_id_to_param.get(numeric_id)
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.numeric_id_to_param.len()
     }
 }
 

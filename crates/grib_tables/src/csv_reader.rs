@@ -91,4 +91,11 @@ mod test {
         // TODO: Look for duplicate abbreviations.
         Ok(())
     }
+
+    #[test]
+    fn test_for_duplicate_abbreviations() -> anyhow::Result<()> {
+        let param_db = get_populated_param_database()?;
+        println!("{}", param_db.describe_all_duplicate_abbrevs());
+        Ok(())
+    }
 }
