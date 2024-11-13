@@ -88,7 +88,6 @@ mod test {
         assert_eq!(temperature_numeric_id.local_table_version(), u8::MAX);
 
         // TODO: Test some local parameters.
-        // TODO: Look for duplicate abbreviations.
         Ok(())
     }
 
