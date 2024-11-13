@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
+
 use crate::parameter::{
     database::ParameterDatabase,
     numeric_id::{NumericId, NumericIdBuilder},
@@ -57,11 +59,9 @@ impl From<&GdalTable4_2Record> for NumericId {
 fn gdal_table_4_2_iterator(
     path: &PathBuf,
 ) -> anyhow::Result<impl Iterator<Item = GdalTable4_2Record>> {
-    let reader = csv::Reader::from_path(path)?;
-    let deser_error_msg = format!(
-        "deserialize result into GdalTable4_2Record for file {:?}",
-        path
-    );
+    let reader = csv::Reader::from_path(path)
+        .with_context(|| format!("Error when calling csv::Reader::from_path({path:?})"))?;
+    let deser_error_msg = format!("deserialize result into GdalTable4_2Record for path {path:?}",);
     let iter = reader
         .into_deserialize()
         .map(move |row| -> GdalTable4_2Record { row.expect(&deser_error_msg) })
@@ -109,30 +109,28 @@ fn get_populated_param_database() -> anyhow::Result<ParameterDatabase> {
         let path = path?;
         let file_stem = path
             .file_stem()
-            .expect("file_stem")
+            .with_context(|| format!("Failed to get file_stem from path {path:?}"))?
             .to_str()
-            .expect("file_stem to str");
-        // grib2_table_4_2_local_HPC.csv doesn't appear to contain useful info for us.
-        if file_stem == "grib2_table_4_2_local_HPC" {
-            continue;
-        }
+            .with_context(|| format!("Failed to convert file_stem to &str for path {path:?}"))?;
         if let Some(captures) = re_master_table.captures(file_stem) {
             let discipline = (&captures["discipline"]).parse().expect("parse discipline");
             let category = (&captures["category"]).parse().expect("parse category");
             for record in gdal_master_table_4_2_iterator(discipline, category)? {
                 let (numeric_id, parameter) = record;
-                param_db.insert(numeric_id, parameter)?;
+                param_db.insert(numeric_id, parameter).with_context(|| 
+                    format!("Error when inserting into parameter database. Master table 4.2 path={path:?}")
+                )?;
             }
         } else if re_local_table.is_match(file_stem) {
             for record in gdal_table_4_2_iterator(&path)? {
                 let (numeric_id, parameter) = record.into();
-                param_db.insert(numeric_id, parameter)?;
+                param_db.insert(numeric_id, parameter).with_context(||
+                    format!("Error when inserting into parameter database. Local table 4.2 path={path:?}")
+                )?;
             }
         } else {
             return Err(anyhow::format_err!(
-                "Failed to interpret CSV filename {:?} with stem {:?}!",
-                path,
-                file_stem
+                "Failed to interpret CSV path {path:?} with stem {file_stem:?}!"
             ));
         }
     }
@@ -254,5 +252,11 @@ mod test {
         let param_db = get_populated_param_database()?;
         // TODO: Do something with database!
         Ok(())
+    }
+
+    #[test]
+    fn test_gdal_table_4_2_iterator_bad_path() {
+        let result = gdal_table_4_2_iterator(&PathBuf::from("foo"));
+        assert!(result.is_err());
     }
 }
