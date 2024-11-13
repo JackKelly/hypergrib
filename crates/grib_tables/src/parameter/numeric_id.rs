@@ -1,3 +1,5 @@
+use core::fmt;
+
 const N_BITS_PER_BYTE: u64 = 8;
 
 pub struct NumericIdBuilder {
@@ -74,7 +76,7 @@ impl NumericIdBuilder {
 ///
 /// `NumericId` is a `u64` because `NumericId` is used as the key in a `BTreeMap`, and `u64`s
 /// are very fast to compare. (And `BTreeMaps` frequently compare keys!)
-#[derive(PartialOrd, Ord, Eq, PartialEq, Copy, Clone, Debug, derive_more::Display)]
+#[derive(PartialOrd, Ord, Eq, PartialEq, Copy, Clone)]
 pub struct NumericId(u64);
 
 impl NumericId {
@@ -147,6 +149,23 @@ impl NumericId {
         let masked_and_shifted = (self.0 & bit_mask) >> n_bits_to_shift;
         debug_assert!(masked_and_shifted <= 0xFF);
         masked_and_shifted as u8
+    }
+}
+
+impl fmt::Debug for NumericId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "NumericId(discipline={}, category={}, parameter_number={}, \
+                master_table_version={}, originating_center={}, local_table_version={}, u64 encoding={})",
+            self.product_discipline(),
+            self.parameter_category(),
+            self.parameter_number(),
+            self.master_table_version(),
+            self.originating_center(),
+            self.local_table_version(),
+            self.0,
+        )
     }
 }
 

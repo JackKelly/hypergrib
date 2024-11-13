@@ -96,9 +96,9 @@ impl ParameterDatabase {
 #[derive(thiserror::Error, Debug, derive_more::Display)]
 #[display("ParameterInsertionError! {_variant}")]
 pub(crate) enum ParameterInsertionError {
-    #[display("NumericIdAlreadyExistsInAbbrevToNumericId numeric_id={:?}, parameter={:?}", _0.0, _0.1)]
+    #[display("NumericIdAlreadyExistsInAbbrevToNumericId\n  numeric_id={:?},\n  parameter={:?}", _0.0, _0.1)]
     NumericIdAlreadyExistsInAbbrevToNumericId((NumericId, Parameter)),
-    #[display("NumericIdAlreadyExistsInNumericIdToParam numeric_id={:?}, previously existing parameter={:?}", _0.0, _0.1)]
+    #[display("NumericIdAlreadyExistsInNumericIdToParam\n  numeric_id={:?},\n  previously existing parameter={:?}", _0.0, _0.1)]
     NumericIdAlreadyExistsInNumericIdToParam((NumericId, Parameter)),
 }
 
