@@ -4,11 +4,11 @@ use std::{collections::HashMap, num::IntErrorKind, path::PathBuf};
 use anyhow::Context;
 use serde::{Deserialize, Deserializer};
 
-use crate::parameter::{
+use crate::{parameter::{
     database::ParameterDatabase,
     numeric_id::{NumericId, NumericIdBuilder},
     Abbrev, Parameter,
-};
+}, MASTER_TABLE_VERSION};
 
 #[derive(Debug, serde::Deserialize, Clone)]
 pub(crate) struct GdalTable4_2Record {
@@ -29,7 +29,7 @@ pub(crate) struct GdalTable4_2Record {
     pub(crate) unit: String,
 }
 
-impl From<GdalTable4_2Record> for (NumericId, Parameter) {
+impl From<GdalTable4_2Record> for (NumericIdBuilder, Parameter) {
     fn from(record: GdalTable4_2Record) -> Self {
         let numeric_id = (&record).into();
         let parameter = record.into();
@@ -47,14 +47,13 @@ impl From<GdalTable4_2Record> for Parameter {
     }
 }
 
-impl From<&GdalTable4_2Record> for NumericId {
+impl From<&GdalTable4_2Record> for NumericIdBuilder {
     fn from(record: &GdalTable4_2Record) -> Self {
         NumericIdBuilder::new(
             record.prod.unwrap(),
             record.cat.unwrap(),
             record.subcat.try_into().expect("subcat must be a u8"),
         )
-        .build()
     }
 }
 
@@ -137,7 +136,7 @@ fn gdal_table_4_2_iterator(
 pub(crate) fn gdal_master_table_4_2_iterator(
     product_discipline: u8,
     parameter_category: u8,
-) -> anyhow::Result<impl Iterator<Item = (NumericId, Parameter)>> {
+) -> anyhow::Result<impl Iterator<Item = (NumericIdBuilder, Parameter)>> {
     let filename = format!("grib2_table_4_2_{product_discipline}_{parameter_category}.csv");
     let path = csv_path().join(filename);
     let iter = gdal_table_4_2_iterator(&path)?;
@@ -154,6 +153,7 @@ fn csv_path() -> PathBuf {
     manifest_dir.join("csv")
 }
 
+/// Beware that this function includes "grib2_table_4_2_local_index.csv".
 fn list_gdal_table_4_2_csv_files() -> Result<glob::Paths, glob::PatternError> {
     let path = csv_path().join("grib2_table_4_2_*.csv");
     glob::glob(path.to_str().expect("path to str"))
@@ -161,39 +161,46 @@ fn list_gdal_table_4_2_csv_files() -> Result<glob::Paths, glob::PatternError> {
 
 fn get_populated_param_database() -> anyhow::Result<ParameterDatabase> {
     let mut param_db = ParameterDatabase::new();
+    let local_index = get_local_index();
 
-    // Load master tables.
     let re_master_table =
-        regex::Regex::new(r"^grib2_table_4_2_(?<discipline>\d{1,2})_(?<category>\d{1,3})$")
+        regex::Regex::new(r"^grib2_table_4_2_(?<discipline>\d{1,2})_(?<category>\d{1,3}).csv$")
             .unwrap();
-    let re_local_table = regex::Regex::new(r"^grib2_table_4_2_local_[A-Z][A-Za-z]+$").unwrap();
+    let re_local_table = regex::Regex::new(r"^grib2_table_4_2_local_[A-Z][A-Za-z]+.csv$").unwrap();
     for path in list_gdal_table_4_2_csv_files()? {
         let path = path?;
-        let file_stem = path
-            .file_stem()
-            .with_context(|| format!("Failed to get file_stem from path {path:?}"))?
+        let file_name = path
+            .file_name()
+            .with_context(|| format!("Failed to get file_name from path {path:?}"))?
             .to_str()
             .with_context(|| format!("Failed to convert file_stem to &str for path {path:?}"))?;
-        if let Some(captures) = re_master_table.captures(file_stem) {
+        if file_name == "grib2_table_4_2_local_index.csv" {
+            continue;
+        } else if let Some(captures) = re_master_table.captures(file_name) {
             let discipline = (&captures["discipline"]).parse().expect("parse discipline");
             let category = (&captures["category"]).parse().expect("parse category");
             for record in gdal_master_table_4_2_iterator(discipline, category)? {
-                let (numeric_id, parameter) = record;
+                let (mut numeric_id_builder, parameter) = record;
+                numeric_id_builder.set_master_table_version(MASTER_TABLE_VERSION);
+                let numeric_id = numeric_id_builder.build();
                 param_db.insert(numeric_id, parameter).with_context(|| 
                     format!("Error when inserting into parameter database. Master table 4.2 path={path:?}")
                 )?;
             }
-        } else if re_local_table.is_match(file_stem) {
+        } else if re_local_table.is_match(file_name) {
             for record in gdal_table_4_2_iterator(&path)? {
-                let (numeric_id, parameter) = record.into();
+                let (mut numeric_id_builder, parameter) = record.into();
+                numeric_id_builder.set_master_table_version(MASTER_TABLE_VERSION);
+                let (originating_center, subcenter) = local_index[file_name];
+                numeric_id_builder.set_originating_center(originating_center);
+                numeric_id_builder.set_subcenter(subcenter);
+                let numeric_id = numeric_id_builder.build();
                 param_db.insert(numeric_id, parameter).with_context(||
                     format!("Error when inserting into parameter database. Local table 4.2 path={path:?}")
                 )?;
             }
         } else {
-            return Err(anyhow::format_err!(
-                "Failed to interpret CSV path {path:?} with stem {file_stem:?}!"
-            ));
+            return Err(anyhow::format_err!("Failed to interpret CSV path {path:?}!"));
         }
     }
     Ok(param_db)
@@ -211,21 +218,21 @@ mod test {
         assert_eq!(vec.len(), 33);
 
         // Check first row of data:
-        let (numeric_id, parameter) = &vec[0];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 0).build());
+        let (numeric_id_builder, parameter) = &vec[0];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(0, 0, 0));
         assert_eq!(parameter, &Parameter::new("TMP", "Temperature", "K"));
 
         // Check middle row of data:
-        let (numeric_id, parameter) = &vec[16];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 16).build());
+        let (numeric_id_builder, parameter) = &vec[16];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(0, 0, 16));
         assert_eq!(
             parameter,
             &Parameter::new("SNOHF", "Snow phase change heat flux", "W/m^2")
         );
 
         // Check last row of data:
-        let (numeric_id, parameter) = &vec[32];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 32).build());
+        let (numeric_id_builder, parameter) = &vec[32];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(0, 0, 32));
         assert_eq!(
             parameter,
             &Parameter::new("", "Wet-bulb potential temperature", "K")
@@ -240,8 +247,8 @@ mod test {
         assert_eq!(vec.len(), 4);
 
         // Check first row of data:
-        let (numeric_id, parameter) = &vec[0];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 191, 0).build());
+        let (numeric_id_builder, parameter) = &vec[0];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(0, 191, 0));
         assert_eq!(
             parameter,
             &Parameter::new(
@@ -252,8 +259,8 @@ mod test {
         );
 
         // Check last row of data:
-        let (numeric_id, parameter) = &vec[3];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 191, 3).build());
+        let (numeric_id_builder, parameter) = &vec[3];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(0, 191, 3));
         assert_eq!(
             parameter,
             &Parameter::new("DSLOBS", "Days Since Last Observation", "d")
@@ -268,13 +275,13 @@ mod test {
         assert_eq!(vec.len(), 74);
 
         // Check first row of data:
-        let (numeric_id, parameter) = &vec[0];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(10, 0, 0).build());
+        let (numeric_id_builder, parameter) = &vec[0];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(10, 0, 0));
         assert_eq!(parameter, &Parameter::new("WVSP1", "Wave spectra (1)", "-"));
 
         // Check last row of data:
-        let (numeric_id, parameter) = &vec[73];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(10, 0, 73).build());
+        let (numeric_id_builder, parameter) = &vec[73];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(10, 0, 73));
         assert_eq!(
             parameter,
             &Parameter::new("", "Whitecap fraction", "fraction")
@@ -287,13 +294,13 @@ mod test {
         let path = csv_path().join("grib2_table_4_2_local_NCEP.csv");
         let iterator = gdal_table_4_2_iterator(&path)?;
         let vec: Vec<_> = iterator
-            .map(|record| -> (NumericId, Parameter) { record.into() })
+            .map(|record| -> (NumericIdBuilder, Parameter) { record.into() })
             .collect();
         assert_eq!(vec.len(), 391);
 
         // Check first row of data:
-        let (numeric_id, parameter) = &vec[0];
-        assert_eq!(numeric_id, &NumericIdBuilder::new(0, 0, 192).build());
+        let (numeric_id_builder, parameter) = &vec[0];
+        assert_eq!(numeric_id_builder, &NumericIdBuilder::new(0, 0, 192));
         assert_eq!(
             parameter,
             &Parameter::new("SNOHF", "Snow Phase Change Heat Flux", "W/(m^2)")
@@ -312,6 +319,23 @@ mod test {
     #[test]
     fn test_get_populated_param_database() -> anyhow::Result<()> {
         let param_db = get_populated_param_database()?;
+        println!("length of param db = {}", param_db.len());
+        assert_eq!(param_db.len(), 1669);
+
+        // Check Temperature
+        let params = param_db.abbrev_to_parameter(&Abbrev("TMP".to_string()));
+        assert_eq!(params.len(), 1);
+        let (temperature_numeric_id, temperature_param) = params.first().as_ref().unwrap();
+        assert_eq!(temperature_param.name, "Temperature");
+        assert_eq!(temperature_param.unit, "K");
+        assert_eq!(temperature_numeric_id.product_discipline(), 0);
+        assert_eq!(temperature_numeric_id.parameter_category(), 0);
+        assert_eq!(temperature_numeric_id.parameter_number(), 0);
+        assert_eq!(temperature_numeric_id.master_table_version(), MASTER_TABLE_VERSION);
+        assert_eq!(temperature_numeric_id.originating_center(), u16::MAX);
+        assert_eq!(temperature_numeric_id.subcenter(), u8::MAX);
+        assert_eq!(temperature_numeric_id.local_table_version(), u8::MAX);
+
         // TODO: Do something with database!
         Ok(())
     }
@@ -326,6 +350,5 @@ mod test {
     fn test_get_local_index() {
         let local_index = get_local_index();
         assert_eq!(local_index.len(), 5);
-        println!("{local_index:?}");
     }
 }

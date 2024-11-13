@@ -2,6 +2,7 @@ use core::fmt;
 
 const N_BITS_PER_BYTE: u64 = 8;
 
+#[derive(PartialEq, Debug)]
 pub struct NumericIdBuilder {
     product_discipline: u8,
     parameter_category: u8,
