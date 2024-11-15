@@ -76,32 +76,47 @@ impl ParameterDatabase {
         }
     }
 
-    pub fn describe_all_duplicate_abbrevs(&self) -> String {
+    pub fn abbrevs_with_multiple_numeric_ids(&self) -> Vec<(&Abbrev, &BTreeSet<NumericId>)> {
+        let mut abbrevs_with_multiple_numeric_ids: Vec<_> = self
+            .abbrev_to_numeric_id
+            .iter()
+            .filter(|(_, numeric_ids)| numeric_ids.len() > 1)
+            .collect();
+        abbrevs_with_multiple_numeric_ids
+            .sort_by(|(abbrev1, _), (abbrev2, _)| abbrev1.cmp(&abbrev2));
+        abbrevs_with_multiple_numeric_ids
+    }
+
+    pub fn describe_abbrevs_with_multiple_params(&self) -> String {
         let mut s = String::new();
-        for (abbrev, set_of_numeric_ids) in self.abbrev_to_numeric_id.iter() {
-            if set_of_numeric_ids.len() > 1 {
-                let params_info: Vec<_> = set_of_numeric_ids
-                    .into_iter()
-                    .map(|numeric_id| {
-                        let param = self.numeric_id_to_param.get(&numeric_id).unwrap();
-                        format!(
-                            "name='{}', unit='{}', dis={}, cat={}, num={}, center={}, sc={}",
-                            param.name,
-                            param.unit,
-                            numeric_id.product_discipline(),
-                            numeric_id.parameter_category(),
-                            numeric_id.parameter_number(),
-                            numeric_id.originating_center(),
-                            numeric_id.subcenter(),
-                        )
-                    })
-                    .collect();
+        let mut count = 0;
+        self.abbrevs_with_multiple_numeric_ids()
+            .iter()
+            .for_each(|(abbrev, set_of_numeric_ids)| {
+                count += 1;
                 writeln!(s, "- {abbrev}:").expect("writeln");
-                for param_info in params_info.iter() {
-                    writeln!(s, "    - {param_info}").expect("writeln");
-                }
-            }
-        }
+                set_of_numeric_ids.into_iter().for_each(|numeric_id| {
+                    let param = self.numeric_id_to_param.get(&numeric_id).unwrap();
+                    writeln!(s, "    - name='{}', unit='{}',", param.name, param.unit)
+                        .expect("writeln");
+                    writeln!(
+                        s,
+                        "        - discipline={:2}, category={:3}, number={:3}, center={:5}, subcenter={:3}",
+                        numeric_id.product_discipline(),
+                        numeric_id.parameter_category(),
+                        numeric_id.parameter_number(),
+                        numeric_id.originating_center(),
+                        numeric_id.subcenter(),
+                    )
+                    .expect("writeln");
+                });
+            });
+        writeln!(
+            s,
+            "\n{} abbreviations are associated with multiple parameters.",
+            count
+        )
+        .expect("writeln");
         s
     }
 

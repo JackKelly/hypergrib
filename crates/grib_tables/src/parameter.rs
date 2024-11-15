@@ -25,5 +25,5 @@ impl Parameter {
     }
 }
 
-#[derive(Hash, Eq, PartialEq, Clone, Debug, derive_more::Display)]
+#[derive(Hash, Eq, PartialEq, Clone, Debug, derive_more::Display, Ord, PartialOrd)]
 pub(crate) struct Abbrev(pub(crate) String);
