@@ -2,6 +2,7 @@ use core::fmt;
 
 const N_BITS_PER_BYTE: u64 = 8;
 
+/// The only public way to create a [`NumericId`].
 #[derive(PartialEq, Debug)]
 pub struct NumericIdBuilder {
     product_discipline: u8,
@@ -44,6 +45,7 @@ impl NumericIdBuilder {
         self.subcenter = subcenter;
         self
     }
+
     pub(crate) fn set_local_table_version(&mut self, local_table_version: u8) -> &Self {
         self.local_table_version = local_table_version;
         self
@@ -62,13 +64,15 @@ impl NumericIdBuilder {
     }
 }
 
-/// `NumericId` stores the unique numerical identifier for each GRIB `Parameter` as a single `u64`.
+/// Stores the unique numerical identifier for each GRIB [`Parameter`](crate::Parameter) as a single [`u64`].
 ///
-/// The components of the numerical ID are positioned into a single `u64` as follows:
+/// Create a `NumericId` using [`NumericIdBuilder`].
+///
+/// The components of the numerical ID are positioned into a single [`u64`] as follows:
 /// (The right-most byte is byte 0):
 ///
-/// | Byte  | Description          | dtype |         CSV file            |
-/// |-------|----------------------|-------|-----------------------------|
+/// | Byte  | Description          | dtype |         GDAL CSV file       |
+/// |:-----:|:--------------------:|:-----:|:---------------------------:|
 /// | 7     | product_discipline   |  u8   |                             |
 /// | 6     | parameter_category   |  u8   |                             |
 /// | 5     | parameter_number     |  u8   |                             |
@@ -77,16 +81,21 @@ impl NumericIdBuilder {
 /// | 1     | subcenter            |  u8*  | grib2_table_4_2_local_index |
 /// | 0     | local_table_version  |  u8   |                             |
 ///
-/// *Note that the GRIB spec says that the subcenter should be u16. But we are not aware of any
-/// subcenters above 255. And NumericId's u64 doesn't have space to a u16 subcenter!
+/// *Note that the [GRIB spec says that the subcenter should be u16](https://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_doc/grib2_sect1.shtml). But [GDAL's `grib2_subcenter.csv`](https://github.com/OSGeo/gdal/blob/master/frmts/grib/data/grib2_subcenter.csv)
+/// does not contain any subcenters above 255.
+/// And NumericId's u64 doesn't have space for a u16 subcenter!
+/// If we later find that we need more bits for `subcenter` then we could consider removing
+/// `local_table_version` which isn't available in the GDAL CSVs.
 ///
-/// In this way, we can, for example, get all parameters for a given category by
-/// getting a `range` from the `BTreeMap`
-/// from `0x00_<product_discipline>_<parameter_category>_00_00_00_00_00`
-/// to   `0x00_<product_discipline>_<parameter_category>_FF_FF_FF_FF_FF`
+/// [`NumericId`] is a [`u64`] because [`NumericId`] is used as the key in
+/// [`ParameterDatabase::numeric_id_to_param`][crate::ParameterDatabase::numeric_id_to_param]
+/// which is a ['BTreeMap'][std::collections::BTreeMap],
+/// and [`u64`]s are very fast to compare. (And `BTreeMap`s frequently compare keys!)
 ///
-/// `NumericId` is a `u64` because `NumericId` is used as the key in a `BTreeMap`, and `u64`s
-/// are very fast to compare. (And `BTreeMaps` frequently compare keys!)
+/// By using a `u64`, we can, for example, get all parameters for a given category using
+/// [`BTreeMap::range`][std::collections::BTreeMap::range]
+/// from `0x<product_discipline>_<parameter_category>_00_00_00_00_00_00`
+/// to   `0x<product_discipline>_<parameter_category>_FF_FF_FF_FF_FF_FF`
 #[derive(PartialOrd, Ord, Eq, PartialEq, Copy, Clone)]
 pub struct NumericId(u64);
 
@@ -105,10 +114,7 @@ impl NumericId {
     /// `originating_center` and `local_table_version` must be `u16::MAX` and `u8::MAX`
     /// respectively for parameters which belong to the master table. This is consistent with
     /// the GRIB spec, which uses `u16::MAX` and `u8::MAX` to indicate a missing value.
-    ///
-    /// TODO: Passing in 6 ints is ugly and error-prone. Let's pass in a struct. Or use a builder
-    /// pattern so the calling code can easily see which parameter is which!
-    pub fn new(
+    fn new(
         product_discipline: u8,
         parameter_category: u8,
         parameter_number: u8,

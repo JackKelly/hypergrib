@@ -10,13 +10,25 @@ use super::{numeric_id::NumericId, Abbrev, Parameter};
 use std::collections::BTreeMap;
 use anyhow::Context;
 
+/// A database of GRIB parameters.
+///
+/// ## Example:
+/// ```
+/// use grib_tables::ParameterDatabase;
+/// # fn main() -> anyhow::Result<()> {
+/// let param_db = ParameterDatabase::new().populate()?;
+/// assert_eq!(param_db.num_numeric_ids(), 1669);
+/// assert_eq!(param_db.num_abbrevs(), 1168);
+/// # Ok(())
+/// # }
+/// ```
 pub struct ParameterDatabase {
     /// We use a `BTreeMap` so we can get, say, all the versions of a particular `parameter_number`
     /// using `BTreeMap.range`.
     numeric_id_to_param: BTreeMap<NumericId, Parameter>,
 
-    // TODO: Empirically test if we actually need the value to be a `BTreeSet` (instead of just a
-    // `NumericId`). In other words, check if any GRIB abbreviations map to multiple parameters.
+    /// The value of this `HashMap` is a `BTreeSet` (instead of just a `NumericId`) because 
+    /// some abbreviations are associated with multiple parameters.
     abbrev_to_numeric_id: HashMap<Abbrev, BTreeSet<NumericId>>,
 }
 
@@ -28,16 +40,6 @@ impl ParameterDatabase {
         }
     }
 
-    /// Example:
-    /// ```
-    /// use grib_tables::ParameterDatabase;
-    /// # fn main() -> anyhow::Result<()> {
-    /// let param_db = ParameterDatabase::new().populate()?;
-    /// assert_eq!(param_db.num_numeric_ids(), 1669);
-    /// assert_eq!(param_db.num_abbrevs(), 1168);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn populate(mut self) -> anyhow::Result<Self> {
         let local_index = get_local_index();
         let re_master_table =
@@ -84,7 +86,7 @@ impl ParameterDatabase {
     }
 
     /// Returns a `Vec` because some abbreviations are associated with multiple parameters.
-    /// See https://github.com/JackKelly/hypergrib/issues/20
+    /// See <https://github.com/JackKelly/hypergrib/issues/20>
     pub fn abbrev_to_parameter(&self, abbrev: &Abbrev) -> Vec<(&NumericId, &Parameter)> {
         match self.abbrev_to_numeric_id.get(abbrev) {
             None => vec![],

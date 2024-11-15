@@ -1,6 +1,7 @@
 pub(crate) mod database;
 pub(crate) mod numeric_id;
 
+/// The human-readable description of a GRIB parameter.
 #[derive(Clone, Debug, derive_more::Display, PartialEq, Eq)]
 #[display("({}, {}, {})", abbrev, name, unit)]
 pub struct Parameter {
@@ -37,6 +38,7 @@ impl Parameter {
     }
 }
 
+/// The abbreviation (AKA "short_name") for a GRIB parameter.
 #[derive(Hash, Eq, PartialEq, Clone, Debug, derive_more::Display, Ord, PartialOrd)]
 pub struct Abbrev(pub(crate) String);
 
