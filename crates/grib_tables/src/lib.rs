@@ -2,7 +2,6 @@
 
 mod csv_reader;
 mod parameter;
-mod template;
 
 pub use parameter::database::ParameterDatabase;
 pub use parameter::numeric_id::{NumericId, NumericIdBuilder};
