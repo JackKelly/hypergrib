@@ -85,20 +85,20 @@ impl ParameterDatabase {
                     .map(|numeric_id| {
                         let param = self.numeric_id_to_param.get(&numeric_id).unwrap();
                         format!(
-                        "name={}, unit={}. discipline={}, cat={}, num={}, center={}, subcenter={}",
-                        param.name,
-                        param.unit,
-                        numeric_id.product_discipline(),
-                        numeric_id.parameter_category(),
-                        numeric_id.parameter_number(),
-                        numeric_id.originating_center(),
-                        numeric_id.subcenter(),
-                    )
+                            "name='{}', unit='{}', dis={}, cat={}, num={}, center={}, sc={}",
+                            param.name,
+                            param.unit,
+                            numeric_id.product_discipline(),
+                            numeric_id.parameter_category(),
+                            numeric_id.parameter_number(),
+                            numeric_id.originating_center(),
+                            numeric_id.subcenter(),
+                        )
                     })
                     .collect();
-                writeln!(s, "{abbrev}: {} numeric_ids:", set_of_numeric_ids.len()).expect("write");
+                writeln!(s, "- {abbrev}:").expect("writeln");
                 for param_info in params_info.iter() {
-                    writeln!(s, "    {param_info}").expect("write");
+                    writeln!(s, "    - {param_info}").expect("writeln");
                 }
             }
         }
