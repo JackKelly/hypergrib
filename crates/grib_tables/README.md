@@ -1,15 +1,8 @@
 ## grib_tables
 
-`grib_tables` will:
-- Load the WMO and GDAL CSVs into memory as a `ParameterDatabase`.
-- Maybe give users the option to only load some of the GRIB table CSVs. e.g. we don't need the Canadian local
-tables if we're loading a NOAA dataset. But this might be over complicating things for a small
-reduction in memory footprint.
-- Save the decoded metadata into the [JSON that we create for each dataset](https://github.com/JackKelly/hypergrib/discussions/17). Maybe have a mapping
-from the abbreviation string to the full ProductTemplate variant.
-
-Then, when users reading the dataset using `hypergrib`, we don't need to load any GRIB tables because
-the relevant metadata will already be captured.
+`grib_tables` will load the GDAL CSVs into memory and allow the user to:
+- Map from parameter abbreviation strings to the numerical representation of that parameter, and the full param name and unit.
+- Map from the numerical representation of each parameter to the param name, abbreviation, and unit.
 
 ## Why crate does this exist?
 
@@ -21,6 +14,9 @@ I'm aware of two existing GRIB readers in Rust (`gribberish` and `grib-rs`) but 
 
 ## Related
 
+- [GRIB tables represented as `.csv` files in GDAL](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data). See [the README for that directory](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT)
+- [Gribberish discussion](https://github.com/mpiannucci/gribberish/issues/41#issuecomment-2404916278)
+- [My post to the gdal-dev mailing list](https://lists.osgeo.org/pipermail/gdal-dev/2024-October/059612.html) about splitting the CSVs and/or me copying the CSVs.) 
 - https://github.com/JackKelly/rust-playground/tree/main/grib_tables: A previous design sketch
   that I made, where we try to faithfully capture the GRIB tables hierarchy (Discipline > Category > Parameter).
   But this feels overkill. It might be _slightly_ faster because we can create a perfect hash at compile time.

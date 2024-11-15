@@ -9,14 +9,13 @@ The intention is that end-users wouldn't have to do this step. Instead an organi
     3. Extract the init datetime (as a `DateTime<Utc>`), the ensemble member (as a `String`) and the step (as a `TimeDelta`).
 - [ ] Record if/when the number of ensemble members and/or steps changes.
 - [ ] Get a list of parameters and vertical levels by reading the bodies of first day's worth of `.idx` files, and the bodies of the last day's worth of `.idx` files. Beware that, for example, the GEFS analysis step doesn't include the same parameters as the forecast steps! (Which is why it's important to read an entire day's worth of data). If the first and last days have the same coordinate labels then assume that the coordinate labels stay the same across the entire dataset. If the coords in the first and last days differ then begin an "over-eager" binary search of the `.idx` files to find when coordinates change (e.g. when the NWP is upgraded an more ensemble members are added - see https://github.com/JackKelly/hypergrib/discussions/15). Submit many GET requests at once. The coords might change more than once. For the MVP:
-    - Don't decode the parameter abbreviation string or the vertical level string. Keep these as strings. The coordinate labels will be these strings.
-    - Ignore step in the `.idx` file. It's easier to get the `step` from the filename! (for GEFS, at least!)
+    - Ignore step in the body of the `.idx` file. It's easier to get the `step` from the filename! (for GEFS, at least!)
+- [ ] Decode the parameter abbreviation string and the string summarising the vertical level using the `grib_tables` sub-crate (so the user gets more information about what these mean, and so the levels can be put into order). 
 - [ ] Get the horizontal spatial coordinates: Read a day's worth of GRIB files at the start of the dataset, and a day's worth at the end of the dataset. If the start and end of the dataset have the same coordinates then we're done; let's assume the spatial coords stay the same across the dataset. Otherwise conduct a kind of over-eager binary search to find exactly where the horizontal spatial coords change. The coords might change more than once. If the scan of `.idx` files found that the ensemble members and/or vertical levels changed then there's a good chance that the spatial coords also changed at the same times.
-- [ ] Record the dimension names, array shape, and coordinates in a JSON file. Also record when the coordinates change. Changes in horizontal resolution probably have to be loaded as different xarray datasets (see https://github.com/JackKelly/hypergrib/discussions/15 and https://github.com/JackKelly/hypergrib/discussions/17).
+- [ ] Record the dimension names, array shape, and coordinate labels in a JSON file. Record the decoded GRIB parameter names and GRIB vertical levels so the end-user doesn't need to use `grib_tables` (maybe have a mapping from each abbreviation string used in the dataset, to the full GRIB ProductTemplate). Also record when the coordinates change. Changes in horizontal resolution probably have to be loaded as different xarray datasets (see https://github.com/JackKelly/hypergrib/discussions/15 and https://github.com/JackKelly/hypergrib/discussions/17).
 
 ### Features beyond the MVP
 - [ ] Implement an efficient way to _update_ the `hypergrib` metadata (e.g. when NODD publishes new forecasts).
-- [ ] Decode the parameter abbreviation string and the level string (so the user gets more information about what these mean, and so the levels can be put into order), possibly using the [GRIB tables represented as `.csv` files in GDAL](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data) (See [the README for that directory](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT), and [this gribberish discussion](https://github.com/mpiannucci/gribberish/issues/41#issuecomment-2404916278), and [my post to the gdal-dev mailing list](https://lists.osgeo.org/pipermail/gdal-dev/2024-October/059612.html) about splitting the CSVs and/or me copying the CSVs.) The current plan is to first generate Rust code in `gribberish` representing the GRIB tables (see https://github.com/mpiannucci/gribberish/issues/63), and then parse `.idx` files into these `gribberish` data structures.
     - [ ] Also need to decode `.idx` parameter strings like this (from HRRR): `var discipline=0 center=7 local_table=1 parmcat=16 parm=201`
 - [ ] Open other GRIB datasets. (If we have to parse the step from the body of `.idx` files then consider using [`nom`](https://crates.io/crates/nom)).
 - [ ] Optimise the extraction of the horizontal spatial coords from the GRIBs by only loading the relevant sections from the GRIBs (using the `.idx` files). Although this optimisation isn't urgent. Users will never have to run this step.
@@ -104,6 +103,15 @@ See https://github.com/JackKelly/hypergrib/discussions/17
 
 #### Slice _into_ each GRIB message
 For example, some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk. Although that has its own issues.).
+
+#### Other ideas
+- Get hypergrib working for as many NWPs as possible
+- Run a service to continually update metadata
+- Caching. (Maybe start with caching for a single user, on that user's machine. Then consider a caching service of some sort. For example, if lots of people request "churro-shaped" data arrays then it will be far faster to load those from a "churro-shaped" dataset cached in cloud object storage). ("churro-shaped" means, for example, a long timeseries for a single geographical point).
+- Analysis tool for comparing different NWPs against each other and against ground truth. (Where would `hypergrib` run? Perhaps _in_ the browser, using `wasm`?! (but [tokio's `rt-multi-thread` feature doesn't work on `wasm`](https://docs.rs/tokio_wasi/latest/tokio/#wasm-support), which might be a deal-breaker.) Or perhaps run a web service in the cloud, close to the data, across multiple machines, so `hypergrib`. And expose a standards compliant API like Environmental Data Retrieval for the front-end?)
+- [Implement existing protocols](https://github.com/JackKelly/hypergrib/issues/19)
+- On the fly processing and analytics. E.g. reprojection
+- Distribute `hypergrib`'s workload across multiple machines. So, for example, users can get acceptable IO performance even if they ask for "churro-shaped" data arrays.
 
 ## If it's too slow to get `.idx` files:
 
