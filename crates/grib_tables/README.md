@@ -1,8 +1,39 @@
 ## grib_tables
 
-`grib_tables` will load the GDAL CSVs into memory and allow the user to:
+`grib_tables` loads the GDAL CSVs into memory and allow the user to:
 - Map from parameter abbreviation strings to the numerical representation of that parameter, and the full param name and unit.
 - Map from the numerical representation of each parameter to the param name, abbreviation, and unit.
+
+## Example
+
+```rust
+use grib_tables::{ParameterDatabase, MASTER_TABLE_VERSION, Abbrev};
+# fn main() -> anyhow::Result<()> {
+// Get a ParameterDatabase populated with the GRIB tables stored in the included CSV files:
+let param_db = ParameterDatabase::new().populate()?;
+
+// Get the numeric IDs and params associated with the abbreviation "TMP":
+let params = param_db.abbrev_to_parameter(&Abbrev::from("TMP"));
+
+// `params` is a `Vec` because some abbreviations are associated with multiple parameters.
+// However, "TMP" is associated with exactly one parameter:
+assert_eq!(params.len(), 1);
+let (temperature_numeric_id, temperature_param) = params.first().as_ref().unwrap();
+assert_eq!(temperature_param.name(), "Temperature");
+assert_eq!(temperature_param.unit(), "K");
+assert_eq!(temperature_numeric_id.product_discipline(), 0);
+assert_eq!(temperature_numeric_id.parameter_category(), 0);
+assert_eq!(temperature_numeric_id.parameter_number(), 0);
+assert_eq!(
+    temperature_numeric_id.master_table_version(),
+    MASTER_TABLE_VERSION
+);
+assert_eq!(temperature_numeric_id.originating_center(), u16::MAX);
+assert_eq!(temperature_numeric_id.subcenter(), u8::MAX);
+assert_eq!(temperature_numeric_id.local_table_version(), u8::MAX);
+# Ok(())
+# }
+```
 
 ## Why crate does this exist?
 
