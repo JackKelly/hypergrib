@@ -1,9 +1,8 @@
 [package]
 name = "grib_tables"
-version = "0.1.1"
+version = "0.1.2"
 edition.workspace = true
 license.workspace = true
-homepage.workspace = true
 repository = "https://github.com/JackKelly/hypergrib/tree/main/crates/grib_tables"
 readme = "README.md"
 authors.workspace = true
