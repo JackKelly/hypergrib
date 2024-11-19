@@ -13,13 +13,14 @@ Retrieve details of each GRIB parameter from the parameter abbreviation (e.g. "T
 use grib_tables::{Abbrev, MASTER_TABLE_VERSION, NumericId, Parameter, ParameterDatabase};
 # fn main() -> anyhow::Result<()> {
 
-// Get a ParameterDatabase populated with the GRIB tables stored in the included CSV files:
+// Get a `ParameterDatabase` populated with the GRIB tables stored in the included CSV files:
 let param_db = ParameterDatabase::new().populate()?;
 
 // Get the numeric IDs and params associated with the abbreviation "TMP":
 let abbrev = Abbrev::from("TMP");
 let params: Vec<(&NumericId, &Parameter)> = param_db.abbrev_to_parameter(&abbrev);
-// `params` is a `Vec` because some abbreviations are associated with multiple parameters.
+// `params` is a `Vec` because 95 abbreviations are associated with multiple parameters.
+// See https://github.com/JackKelly/hypergrib/issues/20
 // (The type of `params` can be deduced by the compiler. The type is written out in
 // this example to make it easier to follow the documentation!)
 
