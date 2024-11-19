@@ -1,8 +1,9 @@
 ## grib_tables
+Retrieve details of each GRIB parameter from the parameter abbreviation or from the numeric identifier.
 
-`grib_tables` loads the GDAL CSVs into memory and allow the user to:
-- Map from parameter abbreviation strings to the numerical representation of that parameter, and the full param name and unit.
-- Map from the numerical representation of each parameter to the param name, abbreviation, and unit.
+`grib_tables` loads the [GDAL CSV files](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data) into memory and allows the user to:
+- Map from parameter abbreviation strings to the numerical representation of that parameter, and the full parameter name and unit.
+- Map from the numerical representation of each parameter to the parameter name, abbreviation, and unit.
 
 ## Example
 
@@ -39,16 +40,9 @@ assert_eq!(temperature_numeric_id.local_table_version(), u8::MAX);
 # }
 ```
 
-## Why crate does this exist?
-
-Because part of the long-term vision for `hypergrib` is to make it easy to compare different NWP datasets, and to easily gain a detailed understanding of exactly what each NWP dataset captures. Luckily, GRIB files contains a tonne of metadata.
-
-`hypergrib` will create most of its coord labels by reading the `.idx` files. So we need to be able to decode the parameter abbreviation strings (e.g. "VTMP") from `.idx` files. And we want users to easily understand exactly what these params "mean", so we need to decode "TMP" to as much detail as possible.
-
-I'm aware of two existing GRIB readers in Rust (`gribberish` and `grib-rs`) but neither can decode `.idx` files, and neither have a full representation of the GRIB tables. Hence this crate existing! And I'm also keen for this crate to be stand-alone so it could be used by `gribberish` and/or `grib-rs` could use `grib_tables` as their GRIB table representation.
-
 ## Related
 
+- We're aware of two existing GRIB readers in Rust ([`gribberish`](https://crates.io/crates/gribberish) and [`grib-rs`](https://crates.io/crates/grib)) but neither can decode `.idx` files, and neither have a full representation of the GRIB tables. Hence this crate exists!
 - [GRIB tables represented as `.csv` files in GDAL](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data). See [the README for that directory](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT)
 - [Gribberish discussion](https://github.com/mpiannucci/gribberish/issues/41#issuecomment-2404916278)
 - [My post to the gdal-dev mailing list](https://lists.osgeo.org/pipermail/gdal-dev/2024-October/059612.html) about splitting the CSVs and/or me copying the CSVs.) 

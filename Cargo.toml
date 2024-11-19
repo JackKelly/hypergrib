@@ -8,7 +8,9 @@ license = "MIT"
 homepage = "https://github.com/JackKelly/hypergrib"
 repository = "https://github.com/JackKelly/hypergrib"
 readme = "README.md"
-authors=["Jack Kelly <jack@openclimatefix.org>"]
+authors = ["Jack Kelly <jack@openclimatefix.org>"]
+categories = ["science", "science::geo", "parser-implementations"]
+keywords = ["GRIB", "weather", "meteorology", "climate", "oceanography"]
 
 [workspace.dependencies] # In alphabetical order
 anyhow = "1.0"
