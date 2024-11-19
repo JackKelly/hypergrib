@@ -40,12 +40,18 @@ assert_eq!(temperature_numeric_id.local_table_version(), u8::MAX);
 # }
 ```
 
+## Why does `grib_tables` exist?
+To build [`hypergrib`](https://github.com/jackkelly/hypergrib), we need to be able to decode GRIB `.idx` files.
+
+We're aware of two awesome existing GRIB readers implemented in Rust ([`gribberish`](https://crates.io/crates/gribberish) and [`grib-rs`](https://crates.io/crates/grib)) but, at the time of writing, neither can decode `.idx` files.
+
+Hence `grib_tables` exists to enable `hypergrib` to decode GRIB `.idx` files.
+
 ## Related
 
-- We're aware of two existing GRIB readers in Rust ([`gribberish`](https://crates.io/crates/gribberish) and [`grib-rs`](https://crates.io/crates/grib)) but neither can decode `.idx` files, and neither have a full representation of the GRIB tables. Hence this crate exists!
 - [GRIB tables represented as `.csv` files in GDAL](https://github.com/OSGeo/gdal/tree/master/frmts/grib/data). See [the README for that directory](https://github.com/OSGeo/gdal/blob/master/frmts/grib/degrib/README.TXT)
 - [Gribberish discussion](https://github.com/mpiannucci/gribberish/issues/41#issuecomment-2404916278)
-- [My post to the gdal-dev mailing list](https://lists.osgeo.org/pipermail/gdal-dev/2024-October/059612.html) about splitting the CSVs and/or me copying the CSVs.) 
+- [Post to the gdal-dev mailing list](https://lists.osgeo.org/pipermail/gdal-dev/2024-October/059612.html) about splitting the CSVs and/or copying the CSVs.) 
 - [A previous design sketch](https://github.com/JackKelly/rust-playground/tree/main/grib_tables)
   where we try to faithfully capture the GRIB tables hierarchy (Discipline > Category > Parameter).
   But this feels overkill. It might be _slightly_ faster because we can create a perfect hash at compile time.
