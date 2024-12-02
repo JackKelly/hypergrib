@@ -1,12 +1,9 @@
-## Step 1: Create metadata describing each NWP datasets
+## Step 1: Create metadata describing each NWP dataset
 
 The intention is that end-users wouldn't have to do this step. Instead an organisation (e.g. Open Climate Fix and/or dynamical.org) would perform this step and publish the metadata.
 
 ### Planned `hypergrib` MVP features (for getting coordinate labels)
-- [ ] Get a list of init datetimes, ensemble members, and steps:
-    1. List all `.idx` filenames. (Actually, we can get all the init datetimes "just" by reading the directory names perhaps using [`ObjectStore::list_with_delimiter`]([url](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html#tymethod.list_with_delimiter)) which is _not_ recursive. Although note that the docs for [`object_store::ListResult`]([url](https://docs.rs/object_store/latest/object_store/struct.ListResult.html)) say "_Individual result sets may be limited to 1,000 objects based on the underlying object storage’s limitations._". If this is too slow or doesn't work then we may have to use the native cloud storage APIs: for example, GCP [includes a `matchGlob` query parameter]([url](https://cloud.google.com/storage/docs/json_api/v1/objects/list)) that could be very useful. Or maybe work to extend `object_store` to implement `match_glob`)
-    2. GEFS filenames include init datetimes, ensmeble members, and steps. Although this will be a dataset-specific feature. Other datasets might not include all this info in the filenames.
-    3. Extract the init datetime (as a `DateTime<Utc>`), the ensemble member (as a `String`) and the step (as a `TimeDelta`).
+- [ ] [Get a list of init datetimes, ensemble members, and steps](https://github.com/JackKelly/hypergrib/milestone/2).
 - [ ] Record if/when the number of ensemble members and/or steps changes.
 - [ ] Get a list of parameters and vertical levels by reading the bodies of first day's worth of `.idx` files, and the bodies of the last day's worth of `.idx` files. Beware that, for example, the GEFS analysis step doesn't include the same parameters as the forecast steps! (Which is why it's important to read an entire day's worth of data). If the first and last days have the same coordinate labels then assume that the coordinate labels stay the same across the entire dataset. If the coords in the first and last days differ then begin an "over-eager" binary search of the `.idx` files to find when coordinates change (e.g. when the NWP is upgraded an more ensemble members are added - see https://github.com/JackKelly/hypergrib/discussions/15). Submit many GET requests at once. The coords might change more than once. For the MVP:
     - Ignore step in the body of the `.idx` file. It's easier to get the `step` from the filename! (for GEFS, at least!)
