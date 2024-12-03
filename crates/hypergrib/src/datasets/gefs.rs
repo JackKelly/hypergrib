@@ -6,7 +6,6 @@ use std::{error::Error, fmt::Display, sync::Arc};
 use chrono::{DateTime, NaiveDate, TimeDelta, TimeZone, Timelike, Utc};
 use futures_util::StreamExt;
 use object_store::ObjectStore;
-use serde::Deserialize;
 
 use crate::filter_by_ext;
 
@@ -317,9 +316,10 @@ fn ymdh_to_datetime(year: i32, month: u32, day: u32, hour: u32) -> DateTime<Utc>
 #[cfg(test)]
 mod tests {
 
-    use std::{cell::OnceCell, sync::OnceLock};
+    use serde::Deserialize;
+    use std::sync::OnceLock;
 
-    use chrono::{naive::serde::ts_milliseconds_option::deserialize, NaiveDateTime};
+    use chrono::NaiveDateTime;
 
     use crate::ToIdxPath;
 
