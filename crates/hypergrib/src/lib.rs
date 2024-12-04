@@ -1,9 +1,9 @@
-use std::{collections::HashSet, future, sync::Arc};
+use std::{future, sync::Arc};
 
 pub mod datasets;
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use futures_util::{Stream, StreamExt};
-use object_store::{ObjectMeta, ObjectStore};
+use object_store::ObjectMeta;
 
 // #[derive(PartialEq, Eq, Hash, Clone)] // PartialEq, Eq, and Hash are required for HashMap keys.
 // struct Key {
@@ -26,58 +26,10 @@ struct MessageLocation {
     // - other metadata?
 }
 
-struct CoordLabelsBuilder {
-    grib_store: Arc<dyn ObjectStore>,
-    grib_base_path: object_store::path::Path,
-    idx_store: Arc<dyn ObjectStore>,
-    idx_base_path: object_store::path::Path,
-    reference_datetime: HashSet<DateTime<Utc>>,
-    ensemble_member: HashSet<String>,
-    forecast_step: HashSet<TimeDelta>,
-    parameter: HashSet<String>,
-    vertical_level: HashSet<String>,
-}
-
-impl CoordLabelsBuilder {
-    fn new(
-        grib_store: Arc<dyn ObjectStore>,
-        grib_base_path: object_store::path::Path,
-        idx_store: Arc<dyn ObjectStore>,
-        idx_base_path: object_store::path::Path,
-    ) -> Self {
-        Self {
-            grib_store,
-            grib_base_path,
-            idx_store,
-            idx_base_path,
-            reference_datetime: HashSet::new(),
-            ensemble_member: HashSet::new(),
-            forecast_step: HashSet::new(),
-            parameter: HashSet::new(),
-            vertical_level: HashSet::new(),
-        }
-    }
-
-    fn build(self) -> CoordLabels {
-        CoordLabels {
-            reference_datetime: set_to_sorted_vec(self.reference_datetime),
-            ensemble_member: set_to_sorted_vec(self.ensemble_member),
-            forecast_step: set_to_sorted_vec(self.forecast_step),
-            parameter: set_to_sorted_vec(self.parameter),
-            vertical_level: set_to_sorted_vec(self.vertical_level),
-        }
-    }
-}
-
-fn set_to_sorted_vec<T: Ord>(set: HashSet<T>) -> Vec<T> {
-    let mut v: Vec<T> = set.into_iter().collect();
-    v.sort();
-    v
-}
-
-/// Each `vec` is sorted and contains unique values.
-/// The only way to make a `CoordLabels` is using `CoordLabelsBuilder::build`.
-struct CoordLabels {
+/// Each `Vec` must be sorted and contains unique values.
+// TODO: Consider implementing a `SortedVec` struct which guarantees
+// that elements are sorted and unique.
+pub struct CoordLabels {
     reference_datetime: Vec<DateTime<Utc>>,
     ensemble_member: Vec<String>,
     forecast_step: Vec<TimeDelta>,
@@ -85,8 +37,9 @@ struct CoordLabels {
     vertical_level: Vec<String>,
 }
 
-/// Get the coordinate labels by reading parts of the GRIB dataset from object storage.
-trait GetCoordLabels {
+/// Get the coordinate labels.
+pub trait GetCoordLabels {
+    #[allow(async_fn_in_trait)]
     async fn get_coord_labels(self) -> anyhow::Result<CoordLabels>;
 }
 
@@ -114,4 +67,11 @@ pub fn filter_by_ext<'a>(
                 .is_some_and(|ext| ext == extension)
         }))
     })
+}
+
+pub(crate) fn ymdh_to_datetime(year: i32, month: u32, day: u32, hour: u32) -> DateTime<Utc> {
+    match Utc.with_ymd_and_hms(year, month, day, hour, 0, 0) {
+        chrono::offset::LocalResult::Single(dt) => dt,
+        _ => panic!("Invalid datetime! {year}-{month}-{day}T{hour}"),
+    }
 }

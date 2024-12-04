@@ -22,4 +22,10 @@ pub async fn main() {
     let args = Args::parse();
 
     println!("Loading dataset {:?}", args.dataset);
+
+    let dataset = match args.dataset {
+        Dataset::Gefs => crate::datasets::Gefs::new(),
+    };
+
+    let coord_labels = dataset.get_coord_labels();
 }
