@@ -1,6 +1,10 @@
+use std::{collections::HashSet, sync::Arc};
+
+use chrono::{DateTime, TimeDelta, Utc};
+use hypergrib::CoordLabels;
 use object_store::ObjectStore;
 
-struct CoordLabelsBuilder {
+pub(crate) struct CoordLabelsBuilder {
     grib_store: Arc<dyn ObjectStore>,
     grib_base_path: object_store::path::Path,
     idx_store: Arc<dyn ObjectStore>,
@@ -13,7 +17,7 @@ struct CoordLabelsBuilder {
 }
 
 impl CoordLabelsBuilder {
-    fn new(
+    pub(crate) fn new(
         grib_store: Arc<dyn ObjectStore>,
         grib_base_path: object_store::path::Path,
         idx_store: Arc<dyn ObjectStore>,

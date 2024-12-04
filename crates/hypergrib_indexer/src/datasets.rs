@@ -1,1 +1,2 @@
-pub(crate) mod gefs;
+pub mod gefs;
+pub use gefs::Gefs;

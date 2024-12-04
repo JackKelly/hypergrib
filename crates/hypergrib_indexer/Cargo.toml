@@ -11,9 +11,11 @@ categories.workspace = true
 keywords.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 clap.workspace = true
+chrono.workspace = true
 futures-util.workspace = true
-hypergrib = { version = "0.1.0", path = "../hypergrib" }
+hypergrib.workspace = true
 object_store.workspace = true
 tokio.workspace = true
 url.workspace = true

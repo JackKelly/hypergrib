@@ -1,15 +1,17 @@
 use clap::{Parser, ValueEnum};
+use hypergrib::GetCoordLabels;
+use hypergrib_indexer::datasets::gefs::Gefs;
 
 /// Create a manifest from GRIB `.idx` files.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     #[arg(value_enum)]
-    dataset: Dataset,
+    dataset: DatasetName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, ValueEnum)]
-enum Dataset {
+enum DatasetName {
     /// The Global Ensemble Forecast System (GEFS) is a weather model created
     /// by the US National Centers for Environmental Prediction (NCEP) that
     /// generates 21 separate forecasts (ensemble members). See:
@@ -24,7 +26,7 @@ pub async fn main() {
     println!("Loading dataset {:?}", args.dataset);
 
     let dataset = match args.dataset {
-        Dataset::Gefs => crate::datasets::Gefs::new(),
+        DatasetName::Gefs => Gefs::new(),
     };
 
     let coord_labels = dataset.get_coord_labels();

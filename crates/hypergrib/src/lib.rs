@@ -30,11 +30,11 @@ struct MessageLocation {
 // TODO: Consider implementing a `SortedVec` struct which guarantees
 // that elements are sorted and unique.
 pub struct CoordLabels {
-    reference_datetime: Vec<DateTime<Utc>>,
-    ensemble_member: Vec<String>,
-    forecast_step: Vec<TimeDelta>,
-    parameter: Vec<String>,
-    vertical_level: Vec<String>,
+    pub reference_datetime: Vec<DateTime<Utc>>,
+    pub ensemble_member: Vec<String>,
+    pub forecast_step: Vec<TimeDelta>,
+    pub parameter: Vec<String>,
+    pub vertical_level: Vec<String>,
 }
 
 /// Get the coordinate labels.
