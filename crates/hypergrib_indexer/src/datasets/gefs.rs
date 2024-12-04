@@ -39,6 +39,9 @@ impl Gefs {
         //   https://github.com/JackKelly/hypergrib/issues/22#issuecomment-2517163383
         // - Insert these into `self.coord_labels_builder.reference_datetime` HashSet.
         //   HashSet<T> is Send and Sync if T is Send and Sync.
+        // Alternatively, could try crate aws-sdk-s3, and pass in s3://noaa-gefs-pds/*/
+        // as the prefix, to see if that works?!
+        //
 
         Ok(())
     }

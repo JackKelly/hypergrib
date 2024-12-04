@@ -44,6 +44,7 @@ impl CoordLabelsBuilder {
         }
         let bucket_url = Url::try_from(url)?;
         let (store, base_path) = object_store::parse_url_opts(&bucket_url, opts)?;
+        println!("base_path = {base_path:?}");
         let store: Arc<dyn ObjectStore> = Arc::from(store);
         Ok(CoordLabelsBuilder::new(
             store.clone(),
