@@ -39,9 +39,10 @@ impl Gefs {
         //   https://github.com/JackKelly/hypergrib/issues/22#issuecomment-2517163383
         // - Insert these into `self.coord_labels_builder.reference_datetime` HashSet.
         //   HashSet<T> is Send and Sync if T is Send and Sync.
-        // Alternatively, could try crate aws-sdk-s3, and pass in s3://noaa-gefs-pds/*/
-        // as the prefix, to see if that works?!
-        //
+        // I've looked at the AWS S3 API docs and I can't see any way to use wildcards.
+        // So maybe I should make a utility function which lists all objects at a particular
+        // depth. e.g. depth 1 would be equivalent of `ls *`; depth 2 would be like `ls */*` etc.
+        // And return a stream?
 
         Ok(())
     }
