@@ -20,14 +20,18 @@ enum DatasetName {
 }
 
 #[tokio::main]
-pub async fn main() {
+pub async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     println!("Loading dataset {:?}", args.dataset);
 
     let dataset = match args.dataset {
-        DatasetName::Gefs => Gefs::new(),
+        DatasetName::Gefs => Gefs::new()?,
     };
 
-    let coord_labels = dataset.get_coord_labels();
+    let coord_labels = dataset.get_coord_labels().await.expect("get_coord_labels");
+    // TODO: Write the coord labels to a metadata file. See:
+    // https://github.com/JackKelly/hypergrib/discussions/17
+
+    Ok(())
 }

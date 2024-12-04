@@ -36,7 +36,7 @@ impl CoordLabelsBuilder {
         }
     }
 
-    fn build(self) -> CoordLabels {
+    pub(crate) fn build(self) -> CoordLabels {
         CoordLabels {
             reference_datetime: set_to_sorted_vec(self.reference_datetime),
             ensemble_member: set_to_sorted_vec(self.ensemble_member),
