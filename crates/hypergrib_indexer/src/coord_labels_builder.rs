@@ -58,6 +58,7 @@ impl CoordLabelsBuilder {
     }
 
     pub(crate) fn build(self) -> CoordLabels {
+        // TODO: No need for `to_sorted_vec` now that we're using `BTreeSet`!
         CoordLabels {
             reference_datetime: to_sorted_vec(self.reference_datetime),
             ensemble_member: to_sorted_vec(self.ensemble_member),
