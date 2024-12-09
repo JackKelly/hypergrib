@@ -26,7 +26,6 @@ impl Gefs {
         let store = self.coord_labels_builder.idx_store().clone();
         let prefix = self.coord_labels_builder.idx_base_path();
         let list = list_with_depth(store, Some(prefix), 1).await?;
-
         for prefix in list.common_prefixes.iter() {
             let datetime = path_to_reference_datetime(prefix)?;
             let datetime_is_unique = self
@@ -37,7 +36,6 @@ impl Gefs {
                 "Duplicate reference datetime! {datetime}"
             );
         }
-
         Ok(())
     }
 }
@@ -45,7 +43,16 @@ impl Gefs {
 impl GetCoordLabels for Gefs {
     async fn get_coord_labels(mut self) -> anyhow::Result<CoordLabels> {
         self.get_reference_datetimes().await?;
-        // TODO: Append all coords to the coord_labels_builder!
+        println!(
+            "{}",
+            self.coord_labels_builder.describe_reference_datetimes()
+        );
+
+        // TODO: Get list of ensemble members and steps from GEFS .idx filenames.
+        //       See issue #23. And use the code snippet in issue #23!
+        // TODO: Get a list of parameters and vertical levels by reading the
+        //       bodies of a minimal set of .idx files. See issue #24.
+        // TODO: Get the horizontal spatial coordinates. See issue #25.
         Ok(self.coord_labels_builder.build())
     }
 }

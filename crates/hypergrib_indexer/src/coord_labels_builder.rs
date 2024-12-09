@@ -59,11 +59,11 @@ impl CoordLabelsBuilder {
 
     pub(crate) fn build(self) -> CoordLabels {
         CoordLabels {
-            reference_datetime: set_to_sorted_vec(self.reference_datetime),
-            ensemble_member: set_to_sorted_vec(self.ensemble_member),
-            forecast_step: set_to_sorted_vec(self.forecast_step),
-            parameter: set_to_sorted_vec(self.parameter),
-            vertical_level: set_to_sorted_vec(self.vertical_level),
+            reference_datetime: to_sorted_vec(self.reference_datetime),
+            ensemble_member: to_sorted_vec(self.ensemble_member),
+            forecast_step: to_sorted_vec(self.forecast_step),
+            parameter: to_sorted_vec(self.parameter),
+            vertical_level: to_sorted_vec(self.vertical_level),
         }
     }
 
@@ -86,9 +86,23 @@ impl CoordLabelsBuilder {
     pub(crate) fn insert_reference_datetime(&mut self, datetime: DateTime<Utc>) -> bool {
         self.reference_datetime.insert(datetime)
     }
+
+    pub(crate) fn reference_datetime(&self) -> &BTreeSet<DateTime<Utc>> {
+        &self.reference_datetime
+    }
+
+    pub(crate) fn describe_reference_datetimes(&self) -> String {
+        let dts = &self.reference_datetime;
+        format!(
+            "{} reference datetimes found. First: {:?}. Last: {:?}",
+            dts.len(),
+            dts.first(),
+            dts.last()
+        )
+    }
 }
 
-fn set_to_sorted_vec<T, S>(set: S) -> Vec<T>
+fn to_sorted_vec<T, S>(set: S) -> Vec<T>
 where
     T: Ord,
     S: IntoIterator,
