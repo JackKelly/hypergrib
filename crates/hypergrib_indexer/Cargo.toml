@@ -19,3 +19,4 @@ hypergrib.workspace = true
 object_store.workspace = true
 tokio.workspace = true
 url.workspace = true
+list_with_depth.workspace = true
