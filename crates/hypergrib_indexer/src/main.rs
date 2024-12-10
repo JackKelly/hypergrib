@@ -44,10 +44,14 @@ pub async fn main() -> anyhow::Result<()> {
 
     let mut handles = Vec::new();
     let store = dataset.coord_labels_builder().idx_store().clone();
+    let path = dataset.coord_labels_builder().idx_base_path().clone();
     for _ in 0..7 {
         let store_cloned = store.clone();
         handles.push(tokio::spawn(async move {
-            store_cloned.list_with_delimiter(None).await
+            //store_cloned.list_with_delimiter(None).await
+            store_cloned
+                .head(&object_store::path::Path::from("index.html"))
+                .await
         }));
     }
 
@@ -55,7 +59,8 @@ pub async fn main() -> anyhow::Result<()> {
     // https://github.com/JackKelly/hypergrib/discussions/17
 
     for handle in handles {
-        let _ = handle.await?;
+        let r = handle.await?;
+        // println!("{:?}", r);
     }
     spawn_handle.await?;
     Ok(())
