@@ -8,7 +8,7 @@ use hypergrib::CoordLabels;
 use object_store::ObjectStore;
 use url::Url;
 
-pub(crate) struct CoordLabelsBuilder {
+pub struct CoordLabelsBuilder {
     grib_store: Arc<dyn ObjectStore>,
     grib_base_path: object_store::path::Path,
     idx_store: Arc<dyn ObjectStore>,
@@ -76,11 +76,11 @@ impl CoordLabelsBuilder {
         &self.grib_base_path
     }
 
-    pub(crate) fn idx_store(&self) -> &Arc<dyn ObjectStore> {
+    pub fn idx_store(&self) -> &Arc<dyn ObjectStore> {
         &self.idx_store
     }
 
-    pub(crate) fn idx_base_path(&self) -> &object_store::path::Path {
+    pub fn idx_base_path(&self) -> &object_store::path::Path {
         &self.idx_base_path
     }
 

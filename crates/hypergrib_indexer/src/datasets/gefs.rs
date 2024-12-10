@@ -38,6 +38,10 @@ impl Gefs {
         }
         Ok(())
     }
+
+    pub fn coord_labels_builder(&self) -> &CoordLabelsBuilder {
+        &self.coord_labels_builder
+    }
 }
 
 impl GetCoordLabels for Gefs {
