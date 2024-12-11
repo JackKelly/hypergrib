@@ -1,93 +1,43 @@
 use std::time::Duration;
 
-use clap::{Parser, ValueEnum};
-use hypergrib::GetCoordLabels;
-use hypergrib_indexer::datasets::gefs::Gefs;
-use tokio::runtime::Handle;
-
-/// Create a manifest from GRIB `.idx` files.
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    #[arg(value_enum)]
-    dataset: DatasetName,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, ValueEnum)]
-enum DatasetName {
-    /// The Global Ensemble Forecast System (GEFS) is a weather model created
-    /// by the US National Centers for Environmental Prediction (NCEP) that
-    /// generates 21 separate forecasts (ensemble members). See:
-    /// https://www.ncei.noaa.gov/products/weather-climate-models/global-ensemble-forecast
-    Gefs,
-}
+use tokio::{
+    runtime::{Handle, RuntimeMetrics},
+    task::JoinSet,
+};
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
+    println!("1. Metrics before submitting any requests:");
+    let m = Handle::current().metrics();
+    print_tokio_metrics(&m);
 
-    println!("Loading dataset {:?}", args.dataset);
-
-    let dataset = match args.dataset {
-        DatasetName::Gefs => Gefs::new()?,
-    };
-
-    let spawn_handle = tokio::spawn(async {
-        for _ in 0..10 {
-            println!("---------------");
-            print_tokio_metrics();
-            tokio::time::sleep(Duration::from_millis(200)).await;
-        }
-    });
-
-    // let coord_labels = dataset.get_coord_labels().await.expect("get_coord_labels");
-
-    let mut handles = Vec::new();
-    let store = dataset.coord_labels_builder().idx_store().clone();
-    let path = dataset.coord_labels_builder().idx_base_path().clone();
-    for _ in 0..7 {
-        let store_cloned = store.clone();
-        handles.push(tokio::spawn(async move {
-            //store_cloned.list_with_delimiter(None).await
-            store_cloned
-                .head(&object_store::path::Path::from("index.html"))
-                .await
-        }));
+    // Submit GET requests:
+    const N: usize = 20;
+    println!("2. Submitting {N} requests...\n");
+    let mut handles = JoinSet::new();
+    let client = reqwest::Client::new();
+    for _ in 0..N {
+        handles.spawn(client.get("https://rust-lang.org").send());
     }
 
-    // TODO: Write the coord labels to a metadata file. See:
-    // https://github.com/JackKelly/hypergrib/discussions/17
+    println!("3. Metrics just after submitting all requests:");
+    print_tokio_metrics(&m);
 
-    for handle in handles {
-        let r = handle.await?;
-        // println!("{:?}", r);
-    }
-    spawn_handle.await?;
+    // Join:
+    handles.join_all().await;
+    println!("4. Metrics just after receiving all requests:");
+    print_tokio_metrics(&m);
+
+    // Print metrics after all blocking threads have been dropped:
+    tokio::time::sleep(Duration::from_secs(10)).await;
+    println!("5. Metrics 10 seconds after receiving all requests:");
+    print_tokio_metrics(&m);
+
     Ok(())
 }
 
-fn print_tokio_metrics() {
-    let metrics = Handle::current().metrics();
-    println!(
-        "Runtime has had {} tasks spawned",
-        metrics.spawned_tasks_count()
-    );
-    println!("num_alive_tasks: {}", metrics.num_alive_tasks());
-    println!("num_workers: {}", metrics.num_workers());
-    println!("global_queue_depth: {}", metrics.global_queue_depth());
-    println!("num_blocking_threads: {}", metrics.num_blocking_threads());
-    println!(
-        "num_idle_blocking_threads: {}",
-        metrics.num_idle_blocking_threads()
-    );
-    println!(
-        "budget_forced_yield_count: {}",
-        metrics.budget_forced_yield_count()
-    );
-    println!("blocking_queue_depth: {}", metrics.blocking_queue_depth());
-    println!(
-        "io_driver_fd_registered_count: {}",
-        metrics.io_driver_fd_registered_count()
-    );
-    println!("io_driver_ready_count: {}", metrics.io_driver_ready_count());
+fn print_tokio_metrics(m: &RuntimeMetrics) {
+    print!("spawned_tasks:{:>3}, ", m.spawned_tasks_count());
+    print!("alive_tasks:{:>3}, ", m.num_alive_tasks());
+    print!("blocking_threads:{:>3}\n\n", m.num_blocking_threads());
 }
