@@ -51,10 +51,11 @@ impl CoordLabelsBuilder {
         }
         let bucket_url = Url::try_from(url)?;
         let (store, base_path) = object_store::parse_url_opts(&bucket_url, opts)?;
-        if let Some(concurrency_limit) = CONCURRENCY_LIMIT {
-            store = LimitStore::new(store, concurrency_limit);
-        }
-        let store: Arc<dyn ObjectStore> = Arc::from(store);
+        let store: Arc<dyn ObjectStore> = if let Some(concurrency_limit) = CONCURRENCY_LIMIT {
+            Arc::new(LimitStore::new(store, concurrency_limit))
+        } else {
+            Arc::from(store)
+        };
         Ok(CoordLabelsBuilder::new(
             store.clone(),
             base_path.clone(),
@@ -74,7 +75,7 @@ impl CoordLabelsBuilder {
     }
 
     pub(crate) fn grib_store(&self) -> &Arc<dyn ObjectStore> {
-        &sel]f.grib_store
+        &self.grib_store
     }
 
     pub(crate) fn grib_base_path(&self) -> &object_store::path::Path {
