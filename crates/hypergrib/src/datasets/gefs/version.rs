@@ -39,7 +39,7 @@ pub(crate) enum Version {
     ///
     /// So it may be safest to ignore the "V3-like" folders in the folders for these
     /// two init datetimes and just use the "V1-like" folders for these two init times.
-    /// i.e. just tread V2 as if it were V1.
+    /// i.e. just treat V2 as if it were V1.
     V2,
 
     /// GEFS model version v12?

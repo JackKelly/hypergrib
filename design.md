@@ -98,7 +98,7 @@ See https://github.com/JackKelly/hypergrib/discussions/17
 - Consolidate nearby byterange requests (user configurable) to minimise overhead, and reduce the total number of IO operations.
 
 #### Slice _into_ each GRIB message
-For example, some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk. Although that has its own issues.).
+For example, some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk. Although that has its own issues.).f
 
 #### Other ideas
 - Get hypergrib working for as many NWPs as possible
@@ -117,3 +117,63 @@ For example, some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ 
 - Put all the `.idx` data into a cloud-side database?
 - Put all the `.idx` data into a local database? DuckDB?
 - We probably want to avoid using a manifest file, or putting metadata for every GRIB message into a database, because we want to scale to datasets with _trillions_ of GRIB messages. See https://github.com/JackKelly/hypergrib/discussions/14
+
+# A file structure for describing NWP datasets
+
+Hand written YAML per dataset:
+
+`datasets/gefs/index.yaml`:
+
+```yaml
+name: GEFS
+description: 
+bucket_url: s3://foo
+versions:
+  - id: v12_atmos_0.5degree
+    model_version: 12
+    # The path is joined to the bucket_url.
+    # Datetime formatting (%y, %m, etc.) formats the reference datetime.
+    # ens_member and forecast_step are "reserved" by hypergrib
+    # others (like param_set) are defined per dataset.
+    path: gefs.%Y%m%d/%h/pgrb2{param_set}/ge{ens_member}.t{%h}z.pgrb2{param_set}.0p{resolution}.f{forecast_step:d03}.idx
+    ref_datetime_range:
+        start: 2020-01-01T00:00Z
+        end: None
+    daily_initialisations:
+      - hour: 00
+        ensemble_members:
+          control: c00
+          perturbed: [ p01, p02, p03, p04, p05, p06 ]
+          ens_mean: avg
+          ens_spread: spr
+        hourly_forecast_steps: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 24, 36, 48]
+    params:
+      - abbrev: TMP # TMP is in all steps and ensemble members
+        param_set: a
+      - abbrev: RH  # RH is only in step 0 of the control member
+        param_set: a
+        only_in:
+          steps: [0]
+          ensemble_members: [c00]
+      - abbrev: HGT # HGT is everywhere except step 0
+        param_set: a
+        not_in:
+          steps: [0]
+
+
+```
+
+Output by Python scripts:
+
+`datasets/gefs/parameters.yaml`:
+```yaml
+- name: Temperature
+  abbreviation: TMP
+  unit: K
+```
+
+`datasets/gefs/v12/ens_members.yaml`:
+```yaml
+- control: 
+- perturbed: 30
+```
