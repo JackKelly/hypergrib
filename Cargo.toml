@@ -32,5 +32,12 @@ thiserror = "2.0"
 tokio = { version = "1.42", features = ["rt-multi-thread"]}
 url = "2.5"
 
+# Tell `reqwest` to use `hickory-dns` which provides an async DNS resolver
+# and a DNS cache. Without `hickory-dns`, `reqwest` uses the default *blocking*
+# DNS resolver, which causes `tokio` to create lots of blocking_threads
+# which is expensive and unnecessary. Note that we don't use `reqwest` directly.
+# Instead, we use `object_store`, which in turn uses `reqwest`.
+reqwest = { version = "0.12", features = ["hickory-dns"] }
+
 [profile.bench]
 debug = true  # Enable debuginfo when profiling with cargo flamegraph.

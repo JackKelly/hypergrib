@@ -1,12 +1,16 @@
-use std::{
-    collections::{BTreeSet, HashSet},
-    sync::Arc,
-};
+use std::{collections::BTreeSet, sync::Arc};
 
 use chrono::{DateTime, TimeDelta, Utc};
 use hypergrib::CoordLabels;
-use object_store::ObjectStore;
+use object_store::{limit::LimitStore, ObjectStore};
 use url::Url;
+
+/// Set the maximum number of concurrent operations.
+/// Set to `None` for no limit. But beware that, when no limit is set,
+/// you may have to increase the number of open file descriptors that your operating
+/// system allows. (Note that file descriptors are used for network connections, as
+/// well as for files!). On Linux, run `ulimit -n 10000` to set the limit to 10,000.
+const CONCURRENCY_LIMIT: Option<usize> = Some(1000);
 
 pub(crate) struct CoordLabelsBuilder {
     grib_store: Arc<dyn ObjectStore>,
@@ -47,7 +51,9 @@ impl CoordLabelsBuilder {
         }
         let bucket_url = Url::try_from(url)?;
         let (store, base_path) = object_store::parse_url_opts(&bucket_url, opts)?;
-        println!("base_path = {base_path:?}");
+        if let Some(concurrency_limit) = CONCURRENCY_LIMIT {
+            store = LimitStore::new(store, concurrency_limit);
+        }
         let store: Arc<dyn ObjectStore> = Arc::from(store);
         Ok(CoordLabelsBuilder::new(
             store.clone(),
@@ -68,7 +74,7 @@ impl CoordLabelsBuilder {
     }
 
     pub(crate) fn grib_store(&self) -> &Arc<dyn ObjectStore> {
-        &self.grib_store
+        &sel]f.grib_store
     }
 
     pub(crate) fn grib_base_path(&self) -> &object_store::path::Path {
