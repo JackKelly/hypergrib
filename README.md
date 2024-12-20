@@ -37,6 +37,11 @@ There are read-patterns which will never be well-served by reading from GRIBs (b
 
 (That said, we're keen to explore ways to slice _into_ each GRIB message... e.g. some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk. Although that has its own issues.).
 
+## But, wait, will it actually be possible to train ML models directly from GRIB?
+It's true that it may be hard to efficiently train ML models which only consider a single geographical location (because of the physical limitation mentioned in the section above).
+
+But ML models that consider large geographical areas should be able to take advantage of the fact that each GRIB message is the entire horizontal plain. For example, energy generation or energy demand models that are trained across multiple countries. Or AI-NWP models which use global NWPs as the initialisation of the state of the atmosphere.
+
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
 
