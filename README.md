@@ -35,12 +35,14 @@ Reading directly from GRIBs will probably be sufficient for a lot of use-cases.
 ## Some read patterns will never be well-served by reading directly from GRIBs
 There are read-patterns which will never be well-served by reading from GRIBs (because of the way the data is structured on disk). For example, reading a long timeseries for a single geographical point will involve reading about one million times more data from disk than you need (assuming each 2D GRIB message is 1,000 x 1,000 pixels). So, even if you sustain 20 gigabytes per second from GRIBs in object storage, you'll only get 20 _kilobytes_ per second of useful data! For these use-cases, the data will almost certainly have to be converted to something like Zarr. (And, hopefully, `hypergrib` will help make the conversion from GRIB to Zarr as efficient as possible).
 
-(That said, we're keen to explore ways to slice _into_ each GRIB message... e.g. some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk. Although that has its own issues.).
+(That said, we're keen to explore ways to slice _into_ each GRIB message... e.g. some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk. Although that has its own issues. But, to get a real speed up, we'd want to only _read_ a subset of each GRIB message. And GRIB data is probably stored as a sequence of horizontal scan lines. So, for example, if you wanted to read data for just the United Kingdom then the best you can do might be to read all the horizontal scan lines that include the UK. But that's still a significant speedup, so might be worth pursuing.).
 
 ## But, wait, will it actually be possible to train ML models directly from GRIB?
 It's true that it may be hard to efficiently train ML models which only consider a single geographical location (because of the physical limitation mentioned in the section above).
 
 But ML models that consider large geographical areas should be able to take advantage of the fact that each GRIB message is the entire horizontal plain. For example, energy generation or energy demand models that are trained across multiple countries. Or AI-NWP models which use global NWPs as the initialisation of the state of the atmosphere.
+
+And, after building `hypergrib`, I may build a simple Rust app for creating Zarrs from NWP datasets.
 
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)

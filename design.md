@@ -92,12 +92,12 @@ For example, some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ 
 
 #### Other ideas
 - Get hypergrib working for as many NWPs as possible
-- Run a service to continually update metadata
-- Caching. (Maybe start with caching for a single user, on that user's machine. Then consider a caching service of some sort. For example, if lots of people request "churro-shaped" data arrays then it will be far faster to load those from a "churro-shaped" dataset cached in cloud object storage). ("churro-shaped" means, for example, a long timeseries for a single geographical point).
+- Write a Rust command-line app which creates Zarrs from `hypergrib` data. e.g. "Get data over the United Kingdom from 2017 to today from these three NWPs, and save to a Zarr with this chunk shape, and distribute the workload across 8 VMs".
 - Analysis tool for comparing different NWPs against each other and against ground truth. (Where would `hypergrib` run? Perhaps _in_ the browser, using `wasm`?! (but [tokio's `rt-multi-thread` feature doesn't work on `wasm`](https://docs.rs/tokio_wasi/latest/tokio/#wasm-support), which might be a deal-breaker.) Or perhaps run a web service in the cloud, close to the data, across multiple machines, so `hypergrib`. And expose a standards compliant API like Environmental Data Retrieval for the front-end?)
 - [Implement existing protocols](https://github.com/JackKelly/hypergrib/issues/19)
 - On the fly processing and analytics. E.g. reprojection
 - Distribute `hypergrib`'s workload across multiple machines. So, for example, users can get acceptable IO performance even if they ask for "churro-shaped" data arrays.
+- Caching. (Maybe start with caching for a single user, on that user's machine. Then consider a caching service of some sort. For example, if lots of people request "churro-shaped" data arrays then it will be far faster to load those from a "churro-shaped" dataset cached in cloud object storage). ("churro-shaped" means, for example, a long timeseries for a single geographical point).
 
 ## If it's too slow to get `.idx` files:
 
