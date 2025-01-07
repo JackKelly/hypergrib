@@ -91,13 +91,24 @@ See https://github.com/JackKelly/hypergrib/discussions/17
 For example, some GRIBs are compressed in JPEG2000, and JPEG2000 allows _parts_ of the image to be decompressed. And maybe, whilst making the manifest, we could decompress each GRIB file and save the state of the decompressor every, say, 4 kB. Then, at query time, if we want a single pixel then we'd have to stream at most 4 kB of data from disk. Although that has its own issues.).f
 
 #### Other ideas
-- Get hypergrib working for as many NWPs as possible
-- Write a Rust command-line app which creates Zarrs from `hypergrib` data. e.g. "Get data over the United Kingdom from 2017 to today from these three NWPs, and save to a Zarr with this chunk shape, and distribute the workload across 8 VMs".
+- Get hypergrib working for as many NWPs as possible (see [Issue #30](https://github.com/JackKelly/hypergrib/issues/30)).
 - Analysis tool for comparing different NWPs against each other and against ground truth. (Where would `hypergrib` run? Perhaps _in_ the browser, using `wasm`?! (but [tokio's `rt-multi-thread` feature doesn't work on `wasm`](https://docs.rs/tokio_wasi/latest/tokio/#wasm-support), which might be a deal-breaker.) Or perhaps run a web service in the cloud, close to the data, across multiple machines, so `hypergrib`. And expose a standards compliant API like Environmental Data Retrieval for the front-end?)
 - [Implement existing protocols](https://github.com/JackKelly/hypergrib/issues/19)
 - On the fly processing and analytics. E.g. reprojection
 - Distribute `hypergrib`'s workload across multiple machines. So, for example, users can get acceptable IO performance even if they ask for "churro-shaped" data arrays.
-- Caching. (Maybe start with caching for a single user, on that user's machine. Then consider a caching service of some sort. For example, if lots of people request "churro-shaped" data arrays then it will be far faster to load those from a "churro-shaped" dataset cached in cloud object storage). ("churro-shaped" means, for example, a long timeseries for a single geographical point).
+
+##### Read patterns which don't fit with GRIB's data layout
+What if users want to read long timeseries for a small number of geographical points (a "churro-shaped" array)? No amount of async trickery will get round the physical constraint that each GRIB message is a 2D array representing a horizontal plane.
+
+If this is an ML training task, then the ideal solution would be to train across the entire geographical scope of the GRIB data (e.g. training a solar PV forecasting model by gathering PV data from across the world). But this is not easy.
+
+It feels like we'll need some way to cache these "churro-shaped" arrays.
+
+One idea would be to write a Rust command-line app which creates Zarrs from `hypergrib` data. e.g. "Get data over the United Kingdom from 2017 to today from these three NWPs, and save to a Zarr with this chunk shape, and distribute the workload across 8 VMs". And, later, make it easy to update the Zarr with recent data.
+
+But what if users want to perform arbitrary processing on the data as it's being moved from GRIB to Zarr, in Python? Can we optimise & orchestrate exposing the GRIB data to Python, running Python processing, and save to Zarr?
+
+And where to store the cache? Maybe start with caching for a single user, on that user's machine. Then consider a cloud caching service of some sort. For example, if lots of people request "churro-shaped" data arrays then it will be far faster to load those from a "churro-shaped" dataset cached in cloud object storage). 
 
 ## If it's too slow to get `.idx` files:
 
