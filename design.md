@@ -110,6 +110,8 @@ But what if users want to perform arbitrary processing on the data as it's being
 
 And where to store the cache? Maybe start with caching for a single user, on that user's machine. Then consider a cloud caching service of some sort. For example, if lots of people request "churro-shaped" data arrays then it will be far faster to load those from a "churro-shaped" dataset cached in cloud object storage). 
 
+Perhaps one "dream" would be to have a completely transparent caching layer. The user just says "I want data in this shape; and my read pattern will look like this" and the software transparently creates a high-speed cache of that data (in cloud object storage or local disks). Although this should probably be a separate project to `hypergrib` because it's solving a general problem. Perhaps using the IceChunk storage engine. Or maybe `zarrs`.
+
 ## If it's too slow to get `.idx` files:
 
 - For small GRIB files, just read the entirety of each GRIB file?
