@@ -10,19 +10,17 @@ There are tens of petabytes of GRIB datasets in public cloud object stores. Woul
 
 For example, the [NOAA Open Data Dissemination](https://www.noaa.gov/nodd) (NODD) programme has shared 59 petabytes so far (and growing rapidly), and [ECMWF](https://www.ecmwf.int/en/forecasts/datasets/open-data) are also busily sharing the bulk of their forecasts on cloud object storage. 
 
-One ultimate dream is to be able to train large machine learning models directly from GRIBs on cloud object storage.
+`hypergrib` is part of a broader project which aims to make it as easy as possible to train, run, and research energy forecasting systems.
 
 For more info on the background and motivation for `hypergrib`, please see [this blog post](https://openclimatefix.org/post/lazy-loading-making-it-easier-to-access-vast-datasets-of-weather-satellite-data).
 
 ## Goals
 - Allow users to lazily open petabyte-scale [GRIB](https://en.wikipedia.org/wiki/GRIB) datasets from their laptop with a single line of code: `xr.open_dataset`.
-- Lazily open a GRIB dataset with _trillions_ of GRIB messages within a fraction of a second, and minimal memory footprint (see https://github.com/JackKelly/hypergrib/discussions/14)
+- Lazily open a GRIB dataset with _trillions_ of GRIB messages in a fraction of a second, and minimal memory footprint (see https://github.com/JackKelly/hypergrib/discussions/14)
 - Create and constantly update metadata for the main public NWP datasets (so users don't have to do this themselves).
 - High performance reading of GRIB binary data: low latency and high bandwidth. A virtual machine with a 200 Gbps (gigabit per second) network interface card in the same region as the data should be able to read GRIBs at ~20 gigabytes per second from object storage. Each load should incur minimal latency. Random access should be as fast & efficient as possible.
 - Computational efficiency and "mechanical sympathy" with cloud object storage
-- Integrate with:
-    - xarray
-    - virtualizarr. See [VirtualiZarr/Add hypergrib as as a grib reader #238](https://github.com/zarr-developers/VirtualiZarr/issues/238)
+- Integrate with `xarray`.
 
 ## More info about `hypergrib`
 For the planned design, please see [design.md](https://github.com/JackKelly/hypergrib/blob/main/design.md).
@@ -43,6 +41,8 @@ It's true that it may be hard to efficiently train ML models which only consider
 But ML models that consider large geographical areas should be able to take advantage of the fact that each GRIB message is the entire horizontal plain. For example, energy generation or energy demand models that are trained across multiple countries. Or AI-NWP models which use global NWPs as the initialisation of the state of the atmosphere.
 
 And, after building `hypergrib`, I may build a simple Rust app for creating Zarrs from NWP datasets.
+
+See [`design.md`](https://github.com/JackKelly/hypergrib/blob/main/design.md) for more ideas on how to make life as easy as possible for developers, even if they want data which isn't in the shape that GRIB naturally supports.
 
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
