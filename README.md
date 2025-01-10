@@ -44,14 +44,7 @@ There are read-patterns which will never be well-served by reading from GRIBs (b
 
 That said, we're keen to explore ways to slice _into_ each GRIB message... See [`design.md`](https://github.com/JackKelly/hypergrib/blob/main/design.md#slice-into-each-grib-message).
 
-And, to help people obtain high performance even with read-patterns which aren't well-suited to GRIB, we're very interested in helping [create local high-performance caches of GRIB data](https://github.com/JackKelly/lets_make_it_super_easy_to_use_weather_forecast_data) (which is perhaps more realistic than slicing _into_ each GRIB message).
-
-## But, wait, will it actually be possible to train ML models directly from GRIB?
-It's true that it may be hard to efficiently train ML models which only consider a single geographical location (because of the physical limitation mentioned in the section above).
-
-And, after building `hypergrib`, I may build a simple Rust app for creating Zarrs from NWP datasets.
-
-See [`design.md`](https://github.com/JackKelly/hypergrib/blob/main/design.md) for more ideas on how to make life as easy as possible for developers, even if they want data which isn't in the shape that GRIB naturally supports.
+And, to help people obtain high performance even with read-patterns which aren't well-suited to GRIB, we're very interested in helping [create local high-performance caches of GRIB data](https://github.com/JackKelly/lets_make_it_super_easy_to_use_weather_forecast_data?tab=readme-ov-file#caching-grib-data-so-you-still-get-high-performance-for-read-patterns-which-dont-fit-with-gribs-data-layout) (which is perhaps more realistic than slicing _into_ each GRIB message).
 
 ## Name
 `hypergrib` uses "hyper" in its mathematical sense, like [hypercube](https://en.wikipedia.org/wiki/Hypercube) (an n-dimensional cube). Oh, and it's reminiscent of a very cool record label, too :)
