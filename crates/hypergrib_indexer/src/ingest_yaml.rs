@@ -76,6 +76,8 @@ struct ForecastStepRange {
     step_duration_in_hours: u32,
 }
 
+// TODO: Maybe change this structure to enforce the mutual exclusion between `include` and
+// `exclude`.
 #[derive(Debug, Deserialize)]
 struct ParameterFilter {
     include_vertical_levels: Option<Vec<String>>,
