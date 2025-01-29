@@ -84,28 +84,44 @@ datasets:
         TMP,RH:
           # This says that TMP & RH are present in all forecast steps, daily cycles, and ensemble members.
           # But TMP and RH are only present in these specified vertical levels:
-          - include_vertical_levels: [ 2 m above ground,
+          - vertical_levels:
+              verb: include_only
+              items: [ 2 m above ground,
                 1000 mb, 925 mb, 850 mb, 700 mb, 500 mb,
                 250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
         DSWRF:
           # "DSWRF is found in all forecast steps except step 0. It is only found at the surface."
-          - exclude_forecast_steps: [ 0 ]
-            include_vertical_levels: [ surface ]
+          - forecast_steps:
+              verb: exclude
+              items: [ 0 ]
+            vertical_levels:
+              verb: include_only
+              items: [ surface ]
         UGRD,VGRD:
-          - include_vertical_levels: [
+          - vertical_levels:
+              verb: include_only
+              items: [
                 10 m above ground,  
                 1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 400 mb, 300 mb,
                 250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
         HGT:
           # In the analysis step, HGT is available at surface, and a bunch of pressure levels.
           # In all other steps, HGT is not available at surface!
-          - include_forecast_steps: [ 0 ]
-            include_vertical_levels: [
+          - forecast_steps: 
+              verb: include_only
+              items: [ 0 ]
+            vertical_levels: 
+              verb: include_only
+              items: [
                 surface,
                 1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 300 mb,
                 250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
-          - exclude_forecast_steps: [ 0 ]
-            include_vertical_levels: [
+          - forecast_steps:
+              verb: exclude
+              items: [ 0 ]
+            vertical_levels:
+              verb: include_only
+              items: [
                 1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 300 mb,
                 250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
           

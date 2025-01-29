@@ -76,14 +76,24 @@ struct ForecastStepRange {
     step_duration_in_hours: u32,
 }
 
-// TODO: Maybe change this structure to enforce the mutual exclusion between `include` and
-// `exclude`.
 #[derive(Debug, Deserialize)]
 struct ParameterFilter {
-    include_vertical_levels: Option<Vec<String>>,
-    exclude_vertical_levels: Option<Vec<String>>,
-    include_forecast_steps: Option<Vec<u32>>,
-    exclude_forecast_steps: Option<Vec<u32>>,
+    vertical_levels: Option<VerticalLevels>,
+    forecast_steps: Option<ForecastSteps>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(tag = "verb", content = "items", rename_all = "snake_case")]
+enum VerticalLevels {
+    IncludeOnly(Vec<String>),
+    Exclude(Vec<String>),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(tag = "verb", content = "items", rename_all = "snake_case")]
+enum ForecastSteps {
+    IncludeOnly(Vec<u32>),
+    Exclude(Vec<u32>),
 }
 
 // Custom deserialization function for a single URL
@@ -155,9 +165,9 @@ mod tests {
             .get("a")
             .expect("Failed to find parameter_set 'a'");
         assert_eq!(
-            param_set_a["DSWRF"][0].include_vertical_levels,
-            Some(vec!["surface".to_string()])
+            param_set_a["DSWRF"][0].vertical_levels,
+            Some(VerticalLevels::IncludeOnly(vec!["surface".to_string()]))
         );
-        assert!(param_set_a["TMP,RH"][0].include_forecast_steps.is_none());
+        assert!(param_set_a["TMP,RH"][0].forecast_steps.is_none());
     }
 }
