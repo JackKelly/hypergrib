@@ -83,13 +83,13 @@ datasets:
         # often organised in groups, such as TMP,RH.
         TMP,RH:
           # This says that TMP & RH are present in all forecast steps, daily cycles, and ensemble members.
-          # But they are only present in these specified vertical levels:
+          # But TMP and RH are only present in these specified vertical levels:
           - include_vertical_levels: [ 2 m above ground,
                 1000 mb, 925 mb, 850 mb, 700 mb, 500 mb,
                 250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
         DSWRF:
           # "DSWRF is found in all forecast steps except step 0. It is only found at the surface."
-          - include_forecast_steps: [ 0 ]
+          - exclude_forecast_steps: [ 0 ]
             include_vertical_levels: [ surface ]
         UGRD,VGRD:
           - include_vertical_levels: [
