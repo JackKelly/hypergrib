@@ -9,6 +9,7 @@ datasets:
   # albeit with a few NaNs (e.g. if a param isn't available at a particular step).
   - dataset_id: v12_atmos_0.5_degree
     nwp_model_version: 12
+
     data_files:
       file_type: grib2
       extension: .grib
@@ -17,6 +18,7 @@ datasets:
       file_type: idx
       extension: .idx
       bucket_url: s3://noaa-gefs-pds/
+
     # `reference_datetime`, `ensemble_member`, `forecast_step`, and `parameter_set`
     # are keywords which are understood by hypergrib.
     formatting_template: >
@@ -29,10 +31,12 @@ datasets:
       pgrb2{parameter_set}.
       0p50.
       f{forecast_step:03}
+
     reference_datetimes:
       start: 2020-09-23T12:00:00Z  # inclusive.
                                    # `end` is inclusive. If `end` is missing, this means "ongoing".
       number_of_daily_cycles: 4
+
     ensemble_members:
       # `control`, `perturbed`, `ens_mean` and `ens_spread` are all keywords (understood by hypergrib).
       control: c00
@@ -42,11 +46,13 @@ datasets:
         end: 30   # inclusive
       ens_mean: avg
       ens_spread: spr
+
     analysis_step: 0  # Earlier versions of GEFS use a string: "anl"
+
+    # `forecast_steps` is a list of multiple ranges because NWPs often reduce the temporal frequency 
+    # for forecast horizons further into the future, and because some daily initialisation cycles
+    # have different forecast horizons.
     forecast_steps:
-      # This is a list of multiple ranges because NWPs often reduce the temporal frequency 
-      # for forecast horizons further into the future, and because some daily initialisation cycles
-      # have different forecast horizons.
       - daily_cycles: [ 0, 6, 12, 18 ]  # The daily cycles for which these forecast steps are relevant for.
         start_hour: 3  # inclusive
         end_hour: 240  # inclusive
@@ -59,54 +65,56 @@ datasets:
         start_hour: 390
         end_hour: 840  # 840 hours is 35 days.
         step_duration_in_hours: 6
-      # vertical_levels are listed in a "best effort" order of altitude, from lowest to highest:
-      vertical_levels: [ 0-0.1 m below ground, mean sea level, surface, 
-                         2 m above ground, 10 m above ground, 180-0 mb above ground,
-                         1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 400 mb, 300 mb,
-                         250 mb, 200 mb, 100 mb, 50 mb, 10 mb, entire atmosphere, top of atmosphere ]
-      parameter_sets:
-        # This needs more work... and probably needs to be determined algorithmically. 
-        # But let's do some visualisation. See issue #5.
-        a:  # Parameter set 'a' contains the most commonly used parameters in GEFS.
-          # Each key is a parameter abbreviation. If the key maps to an empty value then that 
-          # means that the param is present in every combination of vertical level, forecast step,
-          # daily cycle, and ensemble member. A non-empty value tells us where to find the param.
-          # Keys can be single param abbreviations, or a comma-separated list because params are
-          # often organised in groups, such as TMP,RH.
-          TMP,RH:
-            # This says that TMP & RH are present in all forecast steps, daily cycles, and ensemble members.
-            # But they are only present in these specified vertical levels:
-            - vertical_levels: 
-                include_only: [ 
-                  2 m above ground,
-                  1000 mb, 925 mb, 850 mb, 700 mb, 500 mb,
-                  250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
-          DSWRF:
-            # "DSWRF is found in all forecast steps except step 0. It is only found at the surface."
-            - forecast_steps:
-                exclude: [ 0 ]
-              vertical_levels:
-                include_only: [ surface ]
-          UGRD,VGRD:
-            - vertical_levels:
-                include_only: [
-                  10 m above ground,  
-                  1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 400 mb, 300 mb,
-                  250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
-          HGT:
-            # In the analysis step, HGT is available at surface, and a bunch of pressure levels.
-            # In all other steps, HGT is not available at surface!
-            - forecast_steps:
-                include_only: [ 0 ]
-              vertical_levels:
-                include_only: [
-                  surface,
-                  1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 300 mb,
-                  250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
-            - forecast_steps:
-                exclude: [ 0 ]
-              vertical_levels:
-                include_only: [
-                  1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 300 mb,
-                  250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
-            
+
+    # vertical_levels are listed in a "best effort" order of altitude, from lowest to highest:
+    vertical_levels: [ 0-0.1 m below ground, mean sea level, surface, 
+                       2 m above ground, 10 m above ground, 180-0 mb above ground,
+                       1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 400 mb, 300 mb,
+                       250 mb, 200 mb, 100 mb, 50 mb, 10 mb, entire atmosphere, top of atmosphere ]
+
+    parameter_sets:
+      # This needs more work... and probably needs to be determined algorithmically. 
+      # But let's do some visualisation. See issue #5.
+      a: # Parameter set 'a' contains the most commonly used parameters in GEFS.
+        # Each key is a parameter abbreviation. If the key maps to an empty value then that 
+        # means that the param is present in every combination of vertical level, forecast step,
+        # daily cycle, and ensemble member. A non-empty value tells us where to find the param.
+        # Keys can be single param abbreviations, or a comma-separated list because params are
+        # often organised in groups, such as TMP,RH.
+        TMP,RH:
+          # This says that TMP & RH are present in all forecast steps, daily cycles, and ensemble members.
+          # But they are only present in these specified vertical levels:
+          - vertical_levels: 
+              include_only: [ 
+                2 m above ground,
+                1000 mb, 925 mb, 850 mb, 700 mb, 500 mb,
+                250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
+        DSWRF:
+          # "DSWRF is found in all forecast steps except step 0. It is only found at the surface."
+          - forecast_steps:
+              exclude: [ 0 ]
+            vertical_levels:
+              include_only: [ surface ]
+        UGRD,VGRD:
+          - vertical_levels:
+              include_only: [
+                10 m above ground,  
+                1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 400 mb, 300 mb,
+                250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
+        HGT:
+          # In the analysis step, HGT is available at surface, and a bunch of pressure levels.
+          # In all other steps, HGT is not available at surface!
+          - forecast_steps:
+              include_only: [ 0 ]
+            vertical_levels:
+              include_only: [
+                surface,
+                1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 300 mb,
+                250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
+          - forecast_steps:
+              exclude: [ 0 ]
+            vertical_levels:
+              include_only: [
+                1000 mb, 925 mb, 850 mb, 700 mb, 500 mb, 300 mb,
+                250 mb, 200 mb, 100 mb, 50 mb, 10 mb ]
+          

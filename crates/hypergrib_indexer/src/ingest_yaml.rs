@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, FixedOffset};
 use serde::Deserialize;
-use serde_yaml;
 use url::Url;
 
 #[derive(Debug, Deserialize)]
@@ -29,7 +28,7 @@ struct Dataset {
 
     /// The key of the outer HashMap is the param set name (e.g. 'a' or 'b' in GEFS).
     /// The key of the inner HashMap is the NWP param abbreviation (e.g. 'TMP' or 'RH').
-    parameter_sets: HashMap<String, HashMap<String, ParameterSetDetail>>,
+    parameter_sets: HashMap<String, HashMap<String, Vec<ParameterSetDetail>>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -126,4 +125,34 @@ where
         .iter()
         .map(|s| Url::parse(s).map_err(serde::de::Error::custom))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_yaml;
+    use std::fs::File;
+    use std::io::Read;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_load_yaml() {
+        // Construct the path relative to the Cargo.toml
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("datasets/gefs/index.yaml");
+
+        // Open the file
+        let mut file = File::open(&path).expect("Unable to open file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .expect("Unable to read file");
+
+        // Deserialize the YAML contents into the NWP struct
+        let nwp: NWP = serde_yaml::from_str(&contents).expect("Unable to parse YAML");
+
+        // Add assertions here to verify the contents of the `nwp` struct
+        // For example:
+        assert_eq!(nwp.name, "GEFS");
+        // Add more assertions as needed
+    }
 }
