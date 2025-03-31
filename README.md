@@ -1,7 +1,10 @@
 # hypergrib
 
 > [!WARNING]
-> This code is at a very early stage! It won't do anything useful for a while!
+> Work on `hypergrib` is paused for now. It looks like [Dynamical.org](http://dynamical.org/), [IceChunk](https://www.linkedin.com/posts/earthmover_nasa-cloudcomputing-datascience-activity-7311385910879682560-Yuxq?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAEnercBa7aVz-fCikGRwNaOXk-AoHlrPNc),
+> and modern Zarr libraries (like [`Zarr-Python`](https://zarr.readthedocs.io/en/stable/) v3 and [`zarrs`](https://github.com/LDeakin/zarrs))
+> will solve the majority of the problems that `hypergrib` aimed to solve.
+> Please also note that this code is at a very early stage!
 
 This project is inspired by [kerchunk](https://fsspec.github.io/kerchunk/), [VirtualiZarr](https://github.com/zarr-developers/VirtualiZarr), [dynamical.org](https://dynamical.org), [gribberish](https://github.com/mpiannucci/gribberish), [xarray](https://docs.xarray.dev/en/stable/), [NODD](https://www.noaa.gov/nodd), [Camus Energy's work with GRIB files](https://discourse.pangeo.io/t/pangeo-showcase-optimizations-for-kerchunk-aggregation-and-zarr-i-o-at-scale-for-machine-learning/4074/3), and many other great projects!
 
